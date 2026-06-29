@@ -1,0 +1,64 @@
+# =========================
+# Node & Dependencies
+# =========================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+.npm/
+
+# =========================
+# Next.js (Frontend)
+# =========================
+.next/
+out/
+build/
+
+# =========================
+# NestJS / TypeScript (Backend)
+# =========================
+dist/
+dist-tsc/
+*.tsbuildinfo
+
+# =========================
+# Environment Variables & Secrets
+# =========================
+.env
+.env.*
+!.env.example
+!.env.template
+
+# =========================
+# Deployment Tokens & Scripts
+# =========================
+.vercel
+.vercel_token
+.railway_token
+auto-deploy.bat
+
+# =========================
+# Prisma & Database
+# =========================
+# Ignore SQLite databases if you use them locally for testing
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+
+# =========================
+# IDEs & OS Files
+# =========================
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# =========================
+# Documentation / Notes
+# =========================
+# Ignore all markdown files (notes, scratchpads)
+*.md
+# BUT do not ignore the README so others can see your project details
+!README.md
