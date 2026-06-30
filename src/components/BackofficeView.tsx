@@ -82,6 +82,9 @@ export default function BackofficeView() {
   const [activePaymentGateway, setActivePaymentGateway] = useState('MIDTRANS');
   const [midtransServerKey, setMidtransServerKey] = useState('');
   const [xenditApiKey, setXenditApiKey] = useState('');
+  const [bankName, setBankName] = useState('BCA (Bank Central Asia)');
+  const [bankAccountNumber, setBankAccountNumber] = useState('8021308212');
+  const [bankRecipientName, setBankRecipientName] = useState('PT Forex Bot AI Global');
 
   // System Menu Form State
   const [newMenuKey, setNewMenuKey] = useState('');
@@ -171,6 +174,9 @@ export default function BackofficeView() {
       setActivePaymentGateway(appConfig.activePaymentGateway || 'MIDTRANS');
       setMidtransServerKey(appConfig.midtransServerKey || '');
       setXenditApiKey(appConfig.xenditApiKey || '');
+      setBankName((appConfig as any).bankName || 'BCA (Bank Central Asia)');
+      setBankAccountNumber((appConfig as any).bankAccountNumber || '8021308212');
+      setBankRecipientName((appConfig as any).bankRecipientName || 'PT Forex Bot AI Global');
 
       try {
         setSelectedMenus(JSON.parse(appConfig.activeMenusJson));
@@ -326,7 +332,10 @@ export default function BackofficeView() {
       googleClientId,
       activePaymentGateway,
       midtransServerKey,
-      xenditApiKey
+      xenditApiKey,
+      bankName,
+      bankAccountNumber,
+      bankRecipientName
     });
   };
 
@@ -1202,6 +1211,44 @@ export default function BackofficeView() {
                       />
                     </div>
                   )}
+                </div>
+
+                {/* Manual Bank Transfer Details */}
+                <div className="pt-4 border-t border-slate-850/40 space-y-3">
+                  <label className="text-xs font-bold text-slate-200 block font-mono uppercase tracking-wider">Manual Bank Transfer Details</label>
+                  
+                  <div className="space-y-1">
+                    <label className="text-[10px] text-slate-455 font-mono uppercase block">Nama Bank</label>
+                    <input
+                      type="text"
+                      value={bankName}
+                      onChange={(e) => setBankName(e.target.value)}
+                      placeholder="e.g. BCA (Bank Central Asia)"
+                      className="w-full bg-slate-900 border border-slate-800 rounded-xl p-2.5 text-slate-200 text-xs font-mono focus:outline-none focus:border-cyan-500"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] text-slate-455 font-mono uppercase block">Nomor Rekening</label>
+                    <input
+                      type="text"
+                      value={bankAccountNumber}
+                      onChange={(e) => setBankAccountNumber(e.target.value)}
+                      placeholder="e.g. 8021308212"
+                      className="w-full bg-slate-900 border border-slate-800 rounded-xl p-2.5 text-slate-200 text-xs font-mono focus:outline-none focus:border-cyan-500"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] text-slate-455 font-mono uppercase block">Nama Penerima</label>
+                    <input
+                      type="text"
+                      value={bankRecipientName}
+                      onChange={(e) => setBankRecipientName(e.target.value)}
+                      placeholder="e.g. PT Forex Bot AI Global"
+                      className="w-full bg-slate-900 border border-slate-800 rounded-xl p-2.5 text-slate-200 text-xs font-mono focus:outline-none focus:border-cyan-500"
+                    />
+                  </div>
                 </div>
 
                 {/* SMTP Enabled */}

@@ -12,7 +12,8 @@ export default function FintechHub() {
     fetchVps,
     requestDeposit,
     requestWithdrawal,
-    deployVps
+    deployVps,
+    appConfig
   } = useBotStore();
 
   const [activeTab, setActiveTab] = useState<'wallet' | 'vps'>('wallet');
@@ -278,15 +279,15 @@ export default function FintechHub() {
                           <div className="space-y-1 text-xs">
                             <div className="flex justify-between">
                               <span className="text-gray-500">Bank:</span>
-                              <span className="text-gray-200 font-semibold">BCA (Bank Central Asia)</span>
+                              <span className="text-gray-200 font-semibold">{(appConfig as any)?.bankName || 'BCA (Bank Central Asia)'}</span>
                             </div>
                             <div className="flex justify-between items-center">
                               <span className="text-gray-500">No. Rekening:</span>
-                              <span className="text-cyan-400 font-mono font-bold select-all">8021308212</span>
+                              <span className="text-cyan-400 font-mono font-bold select-all">{(appConfig as any)?.bankAccountNumber || '8021308212'}</span>
                             </div>
                             <div className="flex justify-between">
                               <span className="text-gray-500">Nama Penerima:</span>
-                              <span className="text-gray-200 font-semibold">PT Forex Bot AI Global</span>
+                              <span className="text-gray-200 font-semibold">{(appConfig as any)?.bankRecipientName || 'PT Forex Bot AI Global'}</span>
                             </div>
                           </div>
                         </div>
@@ -294,20 +295,11 @@ export default function FintechHub() {
                     }
 
                     if (currency === 'USD' && paymentMethod === 'QRIS') {
-                      const payAmount = amount ? parseFloat(amount) : 0;
-                      const qrisUrl = `https://qris.online/pay/forexbotai?amount=${payAmount}`;
                       return (
-                        <div className="p-3.5 bg-slate-950/80 border border-white/10 rounded-xl flex flex-col items-center gap-2.5 text-center">
-                          <span className="text-[10px] text-gray-400 font-mono block uppercase tracking-wider">Scan Kode QRIS</span>
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img 
-                            src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(qrisUrl)}`} 
-                            alt="QRIS Deposit" 
-                            className="w-28 h-28 p-1 bg-white rounded-lg border border-slate-750"
-                          />
-                          <div className="space-y-0.5">
-                            <span className="text-[9px] text-gray-500 font-mono block">QRIS INSTANT PAYMENT</span>
-                            <span className="text-[11px] text-cyan-400 font-bold font-mono">IDR equivalent will be calculated</span>
+                        <div className="p-4 bg-cyan-500/5 border border-cyan-500/20 rounded-xl flex flex-col items-center gap-2.5 text-center">
+                          <span className="text-[10px] text-cyan-400 font-mono block uppercase tracking-wider">QRIS Instant Payment</span>
+                          <div className="p-3.5 bg-slate-950/60 border border-slate-850 rounded-xl text-[10px] text-gray-455 leading-relaxed font-mono">
+                            Kode QRIS dinamis akan dibuat otomatis oleh Payment Gateway aktif (Midtrans/Xendit) setelah Anda memasukkan nominal dan mengeklik tombol <span className="text-cyan-400 font-bold">"Submit Deposit"</span> di bawah.
                           </div>
                         </div>
                       );
@@ -508,6 +500,50 @@ export default function FintechHub() {
               className="w-full py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-700 text-white font-semibold rounded-xl text-sm transition-all shadow-lg shadow-purple-500/20"
             >
               {loading ? 'Deploying Virtual Server...' : (vpsInstance ? 'VPS Already Active' : 'Deploy Virtual Dedicated VPS')}
+            </button>
+          </div>
+        </div>
+      )}
+      {/* Real QRIS Payment Checkout Modal */}
+      {activeQrUrl && (
+        <div className="fixed inset-0 bg-slate-955/85 backdrop-blur-md flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-sm w-full shadow-2xl text-center space-y-5 animate-in fade-in zoom-in-95">
+            <div className="space-y-1">
+              <h3 className="text-sm font-bold text-slate-100 font-mono uppercase tracking-wider">QRIS Pembayaran Instan</h3>
+              <p className="text-[10px] text-slate-450">
+                Pindai kode QR di bawah ini menggunakan GoPay, ShopeePay, OVO, Dana, atau LinkAja Anda untuk menyelesaikan pembayaran.
+              </p>
+            </div>
+
+            <div className="bg-white p-3.5 rounded-2xl w-48 h-48 mx-auto flex items-center justify-center border border-slate-800 shadow-inner">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img 
+                src={activeQrUrl} 
+                alt="Active QRIS Payment" 
+                className="w-full h-full object-contain"
+              />
+            </div>
+
+            <div className="bg-slate-950/60 p-3 rounded-xl border border-slate-850 text-xs font-mono space-y-1">
+              <div className="flex justify-between">
+                <span className="text-gray-500">Nominal Deposit:</span>
+                <span className="text-cyan-400 font-bold">${amount} USD</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500">Status Transaksi:</span>
+                <span className="text-amber-400 font-bold animate-pulse">Menunggu Pembayaran...</span>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                setActiveQrUrl(null);
+                setAmount('');
+              }}
+              className="w-full py-2.5 bg-slate-800 hover:bg-slate-750 text-slate-200 text-xs font-bold uppercase tracking-wider rounded-xl transition-all duration-300 cursor-pointer active:scale-95"
+            >
+              Tutup & Selesai
             </button>
           </div>
         </div>
