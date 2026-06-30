@@ -2,6 +2,8 @@ import { create } from 'zustand';
 import { BotStatus, BotConfig, TradeRecord, AiLog, AccountStats, OhlcvData, AIStrategyParams, BacktestResult } from '../types';
 import { mockSocketService } from '../services/mockSocket';
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || `${API_BASE_URL}`;
+
 export interface UserSession {
   id: string;
   email: string;
@@ -2398,5 +2400,5 @@ export const useBotStore = create<BotState>((set, get) => ({
 
 function getApiUrl(): string {
   const state = useBotStore.getState();
-  return state.appConfig?.backendUrl || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+  return state.appConfig?.backendUrl || process.env.NEXT_PUBLIC_API_URL || `${API_BASE_URL}`;
 }
