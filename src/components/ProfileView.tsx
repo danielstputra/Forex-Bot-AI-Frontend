@@ -2,10 +2,10 @@
 
 import React, { useState, useEffect } from 'react';
 import { useBotStore } from '../store/useBotStore';
-import { User, Mail, Phone, Globe, Lock, ShieldCheck, Award, Save, RefreshCw } from 'lucide-react';
+import { User, Mail, Phone, Globe, Lock, ShieldCheck, Award, Save, RefreshCw, Trash2, AlertTriangle } from 'lucide-react';
 
 export default function ProfileView() {
-  const { user, updateProfile, fetchWallets } = useBotStore();
+  const { user, updateProfile, deleteAccount } = useBotStore();
 
   const [legalName, setLegalName] = useState('');
   const [phone, setPhone] = useState('');
@@ -17,6 +17,11 @@ export default function ProfileView() {
   const [loadingProfile, setLoadingProfile] = useState(false);
   const [loadingPassword, setLoadingPassword] = useState(false);
   const [msg, setMsg] = useState({ type: '', text: '' });
+
+  // Delete Account States
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [deleting, setDeleting] = useState(false);
 
   // Load user data on mount
   useEffect(() => {
@@ -61,6 +66,20 @@ export default function ProfileView() {
       setMsg({ type: 'error', text: err.message || 'Gagal memperbarui kata sandi.' });
     } finally {
       setLoadingPassword(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (deleteConfirmText !== 'HAPUS AKUN SAYA') return;
+    setDeleting(true);
+    try {
+      await deleteAccount();
+    } catch (err: any) {
+      setMsg({ type: 'error', text: err.message || 'Gagal menghapus akun.' });
+      setShowDeleteModal(false);
+      setDeleteConfirmText('');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -165,7 +184,7 @@ export default function ProfileView() {
                 <div className="relative">
                   <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 w-4 h-4" />
                   <input
-                    type="tel"
+                    type="text"
                     placeholder="+62 812-3456-789"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
@@ -261,8 +280,85 @@ export default function ProfileView() {
               </div>
             </form>
           </div>
+
+          {/* Danger Zone: Delete Account */}
+          <div className="bg-rose-500/5 border border-rose-500/20 rounded-3xl p-6 space-y-4">
+            <h3 className="text-sm font-bold font-mono text-rose-400 uppercase tracking-wider flex items-center gap-2 border-b border-rose-500/10 pb-2">
+              <Trash2 className="w-4 h-4" />
+              Danger Zone - Hapus Akun
+            </h3>
+            
+            <p className="text-xs text-gray-450 leading-relaxed">
+              Tindakan ini bersifat <span className="text-rose-400 font-bold font-mono">PERMANEN</span> dan tidak dapat dibatalkan. Menghapus akun Anda akan menghapus seluruh data bot, riwayat transaksi, pengaturan broker, dan saldo dompet Anda dari sistem secara permanen.
+            </p>
+
+            <button
+              type="button"
+              onClick={() => setShowDeleteModal(true)}
+              className="px-4 py-2.5 bg-rose-650 hover:bg-rose-700 text-white font-bold rounded-xl text-xs transition-all active:scale-95 shadow-lg shadow-rose-600/15 cursor-pointer"
+            >
+              Hapus Akun Permanen
+            </button>
+          </div>
         </div>
       </div>
+
+      {/* Delete Account Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-slate-955/85 backdrop-blur-md flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-sm w-full shadow-2xl space-y-5">
+            <div className="p-3.5 bg-rose-500/10 text-rose-500 border border-rose-500/20 rounded-full w-14 h-14 flex items-center justify-center mx-auto">
+              <AlertTriangle className="w-8 h-8" />
+            </div>
+            
+            <div className="space-y-2 text-center">
+              <h3 className="text-sm font-bold text-white uppercase font-mono">Apakah Anda sangat yakin?</h3>
+              <p className="text-xs text-gray-400 leading-relaxed">
+                Tindakan ini <span className="font-bold text-rose-400">TIDAK BISA DIBATALKAN</span>. Ini akan menghapus akun Anda secara permanen beserta semua data yang terasosiasi.
+              </p>
+              <p className="text-[10px] text-rose-400/90 font-medium">
+                Silakan ketik <span className="font-bold font-mono text-rose-400 bg-rose-500/15 px-1.5 py-0.5 rounded">HAPUS AKUN SAYA</span> di bawah ini untuk mengonfirmasi.
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <input
+                type="text"
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                placeholder="HAPUS AKUN SAYA"
+                className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-white text-sm text-center font-bold focus:outline-none focus:border-rose-500 placeholder:text-gray-700"
+              />
+
+              <div className="flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowDeleteModal(false);
+                    setDeleteConfirmText('');
+                  }}
+                  className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-750 text-gray-300 font-bold rounded-xl text-xs transition-all cursor-pointer"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  disabled={deleteConfirmText !== 'HAPUS AKUN SAYA' || deleting}
+                  onClick={handleDeleteAccount}
+                  className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 disabled:bg-slate-850 disabled:text-slate-600 text-white font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-1.5 shadow-lg shadow-rose-600/15 cursor-pointer"
+                >
+                  {deleting ? (
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="w-4 h-4" />
+                  )}
+                  Ya, Hapus Akun
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

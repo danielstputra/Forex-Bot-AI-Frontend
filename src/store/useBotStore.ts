@@ -50,6 +50,7 @@ interface BotState {
   upgradeSubscription: (tier: string) => Promise<void>;
   setup2fa: (code: string) => Promise<{ success: boolean }>;
   updateProfile: (data: { legalName?: string; phone?: string; country?: string; newPassword?: string }) => Promise<void>;
+  deleteAccount: () => Promise<void>;
   isUpgradeOpen: boolean;
   setUpgradeOpen: (open: boolean) => void;
 
@@ -926,6 +927,27 @@ export const useBotStore = create<BotState>((set, get) => ({
     } catch (err: any) {
       console.error('Failed to update profile:', err);
       get().addNotification(err.message || 'Gagal memperbarui profil.');
+      throw err;
+    }
+  },
+
+  deleteAccount: async () => {
+    try {
+      const response = await fetch(`${getApiUrl()}/auth/profile`, {
+        method: 'DELETE',
+        headers: getHeaders()
+      });
+      if (response.ok) {
+        localStorage.removeItem('token');
+        set({ user: null });
+        get().addNotification('Akun Anda berhasil dihapus.');
+      } else {
+        const data = await response.json();
+        throw new Error(data.message || 'Gagal menghapus akun');
+      }
+    } catch (err: any) {
+      console.error('Failed to delete account:', err);
+      get().addNotification(err.message || 'Gagal menghapus akun.');
       throw err;
     }
   },

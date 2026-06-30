@@ -14,6 +14,37 @@ export default function TradingViewChart() {
     fetchNewsSentiments();
   }, [fetchNewsSentiments]);
 
+  // Generate historical OHLCV candles if they are not present or too short
+  useEffect(() => {
+    const currentData = chartData[selectedPair] || [];
+    if (currentData.length < 50) {
+      const generatedData: any[] = [];
+      const now = Math.floor(Date.now() / 1000);
+      const oneMinute = 60;
+      
+      let price = selectedPair === 'USD/JPY' ? 156.40 :
+                  selectedPair === 'GBP/USD' ? 1.2720 :
+                  selectedPair === 'AUD/USD' ? 0.6640 : 1.0850;
+      
+      // Generate 150 minutes of historical candles
+      for (let i = 150; i >= 0; i--) {
+        const time = (now - i * oneMinute) - ((now - i * oneMinute) % 60);
+        const change = (Math.random() - 0.5) * (selectedPair === 'USD/JPY' ? 0.04 : 0.0003);
+        const open = price;
+        const close = parseFloat((price + change).toFixed(selectedPair === 'USD/JPY' ? 3 : 5));
+        const high = parseFloat((Math.max(open, close) + Math.random() * (selectedPair === 'USD/JPY' ? 0.02 : 0.0001)).toFixed(selectedPair === 'USD/JPY' ? 3 : 5));
+        const low = parseFloat((Math.min(open, close) - Math.random() * (selectedPair === 'USD/JPY' ? 0.02 : 0.0001)).toFixed(selectedPair === 'USD/JPY' ? 3 : 5));
+        
+        generatedData.push({ time, open, high, low, close });
+        price = close;
+      }
+      
+      useBotStore.setState((state) => ({
+        chartData: { ...state.chartData, [selectedPair]: generatedData }
+      }));
+    }
+  }, [selectedPair, chartData]);
+
   useEffect(() => {
     if (!chartContainerRef.current) return;
 

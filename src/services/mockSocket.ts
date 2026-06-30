@@ -48,7 +48,9 @@ class RealSocketService {
                 this.currentPrices[pair] = close;
 
                 // Update chart data in Zustand store
-                const newBar: OhlcvData = { time, open, high, low, close };
+                // Round time to 1-minute interval for 1m timeframe chart
+                const roundedTime = time - (time % 60);
+                const newBar: OhlcvData = { time: roundedTime, open, high, low, close };
                 store.addChartTick(pair, newBar);
               });
 
