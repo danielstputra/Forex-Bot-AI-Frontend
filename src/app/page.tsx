@@ -33,7 +33,24 @@ import { ShieldAlert, RefreshCw } from 'lucide-react';
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState('dashboard');
-  const { user, isUpgradeOpen, setUpgradeOpen, initSession, initTenant } = useBotStore();
+  const { user, isUpgradeOpen, setUpgradeOpen, initSession, initTenant, appConfig, theme, setTheme } = useBotStore();
+
+  // Sync theme store state with HTML class on mount
+  useEffect(() => {
+    const isDark = document.documentElement.classList.contains('dark');
+    if (isDark && theme !== 'dark') {
+      useBotStore.setState({ theme: 'dark' });
+    } else if (!isDark && theme !== 'light') {
+      useBotStore.setState({ theme: 'light' });
+    }
+  }, [theme]);
+
+  // Update Browser Title based on dynamic config
+  useEffect(() => {
+    if (appConfig?.appName) {
+      document.title = `${appConfig.appName} - Premium Enterprise Trading Terminal`;
+    }
+  }, [appConfig?.appName]);
 
   // Restore session from backend on mount
   useEffect(() => {
@@ -62,7 +79,7 @@ export default function Home() {
   }
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-[#090d16] text-slate-100 font-sans selection:bg-cyan-500/30">
+    <div className="flex h-screen w-screen overflow-hidden bg-background text-foreground font-sans selection:bg-cyan-500/30">
       
       {/* PWA & Network Monitor Fallback */}
       <OfflineFallback />
@@ -76,7 +93,7 @@ export default function Home() {
       </div>
 
       {/* Main Container */}
-      <div className="flex-1 flex flex-col h-full overflow-hidden bg-[#090d16]">
+      <div className="flex-1 flex flex-col h-full overflow-hidden bg-background">
         {/* Header - Account & Quick Controls */}
         <div id="tour-header">
           <Header />

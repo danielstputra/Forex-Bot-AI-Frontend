@@ -1,52 +1,39 @@
 'use client';
 
 import React from 'react';
-import { 
-  TrendingUp, 
-  History, 
-  Terminal, 
-  ShieldCheck, 
-  Cpu, 
-  Globe,
-  LineChart,
-  Award,
-  Users,
-  HelpCircle,
-  Shield,
-  Settings,
-  Wallet,
-  Percent,
-  Code,
-  Mail
-} from 'lucide-react';
+import * as Icons from 'lucide-react';
 import { useBotStore } from '../store/useBotStore';
 import { useI18nStore, Language } from '../store/useI18nStore';
 
 interface SidebarProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
+  isOpen?: boolean;
+  onClose?: () => void;
 }
 
-export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
-  const { status, user, setUpgradeOpen, customLogoUrl, inboxMessages } = useBotStore();
+export default function Sidebar({ activeTab, setActiveTab, isOpen, onClose }: SidebarProps) {
+  const { 
+    status, user, setUpgradeOpen, customLogoUrl, inboxMessages, 
+    appConfig, fetchAppConfig, myAuthorizedMenus, fetchMyAuthorizedMenus 
+  } = useBotStore();
   const { lang, setLanguage, t } = useI18nStore();
   
-  const menuItems = [
-    { id: 'dashboard', name: t('sidebar.title'), icon: TrendingUp },
-    { id: 'inbox', name: 'Kotak Masuk', icon: Mail },
-    { id: 'history', name: t('sidebar.history'), icon: History },
-    { id: 'fintech', name: 'Fintech Hub', icon: Wallet },
-    { id: 'backtest', name: t('sidebar.backtest'), icon: LineChart },
-    { id: 'social', name: 'Social Trading', icon: Users },
-    { id: 'pamm', name: 'PAMM/MAM Manager', icon: Percent },
-    { id: 'security_kyc', name: t('sidebar.securityKyc'), icon: ShieldCheck },
-    { id: 'affiliate', name: t('sidebar.affiliate'), icon: Award },
-    { id: 'help', name: 'Pusat Bantuan', icon: HelpCircle },
-    { id: 'audit', name: 'Audit Trail', icon: Shield },
-    { id: 'developer', name: 'Developer Portal', icon: Code },
-    { id: 'backoffice', name: 'Backoffice (Admin)', icon: Settings },
-    { id: 'logs', name: t('sidebar.logs'), icon: Terminal },
-  ];
+  React.useEffect(() => {
+    fetchAppConfig();
+    fetchMyAuthorizedMenus();
+  }, [fetchAppConfig, fetchMyAuthorizedMenus]);
+
+  // Map database-backed myAuthorizedMenus to sidebar items
+  const menuItems = myAuthorizedMenus
+    .map((item: any) => {
+      const IconComponent = (Icons as any)[item.iconName] || Icons.HelpCircle;
+      return {
+        id: item.key,
+        name: item.name,
+        icon: IconComponent
+      };
+    });
 
   const handleTabClick = (id: string) => {
     if (id === 'backtest' && user?.tier === 'FREE') {
@@ -57,20 +44,37 @@ export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
   };
 
   return (
-    <aside className="w-64 bg-slate-900 border-r border-slate-800 flex flex-col h-full z-10 shrink-0">
+    <>
+      {/* Mobile Backdrop */}
+      {isOpen && (
+        <div 
+          className="fixed inset-0 bg-slate-950/60 backdrop-blur-sm z-40 lg:hidden"
+          onClick={onClose}
+        />
+      )}
+      <aside className={`fixed inset-y-0 left-0 lg:static w-64 bg-slate-900 border-r border-slate-800 flex flex-col h-full z-50 shrink-0 transition-transform duration-300 ${
+        isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+      }`}>
       {/* Brand Section */}
       <div className="p-6 border-b border-slate-800 flex items-center gap-3 h-20 shrink-0">
-        {customLogoUrl ? (
+        {appConfig?.logoUrl ? (
+          /* eslint-disable-next-line @next/next/no-img-element */
+          <img src={appConfig.logoUrl} alt="Brand Logo" className="max-h-10 max-w-full object-contain" />
+        ) : customLogoUrl ? (
           /* eslint-disable-next-line @next/next/no-img-element */
           <img src={customLogoUrl} alt="Brand Logo" className="max-h-9 max-w-full object-contain" />
         ) : (
           <>
             <div className="p-2 bg-gradient-to-tr from-cyan-500 to-purple-600 rounded-lg text-white animate-pulse">
-              <Cpu className="w-5 h-5" />
+              <Icons.Cpu className="w-5 h-5" />
             </div>
             <div>
-              <h1 className="font-bold text-sm text-slate-100 tracking-wider">FOREX-BOT <span className="text-cyan-400 font-black">AI</span></h1>
-              <span className="text-[10px] text-slate-500 font-mono block">v3.0.0 Enterprise</span>
+              <h1 className="font-bold text-xs text-slate-100 tracking-wider uppercase">
+                {appConfig?.appName || 'FOREX-BOT AI'}
+              </h1>
+              <span className="text-[9px] text-slate-500 font-mono block">
+                {appConfig?.appVersion || 'v3.0.0'} Enterprise
+              </span>
             </div>
           </>
         )}
@@ -150,7 +154,7 @@ export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
         {/* Language Selector */}
         <div className="pt-3 border-t border-slate-850/85">
           <div className="flex items-center gap-1.5 text-[9px] text-slate-500 font-mono mb-2">
-            <Globe className="w-3 h-3 text-slate-550" />
+            <Icons.Globe className="w-3 h-3 text-slate-550" />
             <span>Language / 言語</span>
           </div>
           <div className="flex gap-1 bg-slate-900 p-1 rounded-xl border border-slate-850/80">
@@ -172,10 +176,11 @@ export default function Sidebar({ activeTab, setActiveTab }: SidebarProps) {
 
         {/* Security Indicator */}
         <div className="pt-2 border-t border-slate-800/80 flex items-center gap-2 text-[9px] text-cyan-500/80 font-mono">
-          <ShieldCheck className="w-3.5 h-3.5" />
+          <Icons.ShieldCheck className="w-3.5 h-3.5" />
           <span>{t('sidebar.secured')}</span>
         </div>
       </div>
     </aside>
+  </>
   );
 }

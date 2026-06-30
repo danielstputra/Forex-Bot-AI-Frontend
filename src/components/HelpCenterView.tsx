@@ -31,7 +31,9 @@ export default function HelpCenterView() {
   const fetchMessagesForTicket = async (ticketId: string) => {
     try {
       const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-      const res = await fetch(`http://localhost:5000/support/tickets/${ticketId}/messages`, {
+      const { appConfig } = useBotStore.getState();
+      const backendUrl = appConfig?.backendUrl || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const res = await fetch(`${backendUrl}/support/tickets/${ticketId}/messages`, {
         headers: {
           'Content-Type': 'application/json',
           ...(token ? { 'Authorization': `Bearer ${token}` } : {})
@@ -74,7 +76,9 @@ export default function HelpCenterView() {
 
     try {
       const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-      const res = await fetch(`http://localhost:5000/support/tickets/${activeTicket.id}/messages`, {
+      const { appConfig } = useBotStore.getState();
+      const backendUrl = appConfig?.backendUrl || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+      const res = await fetch(`${backendUrl}/support/tickets/${activeTicket.id}/messages`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

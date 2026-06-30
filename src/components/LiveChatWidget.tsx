@@ -10,14 +10,17 @@ interface ChatMessage {
   timestamp: string;
 }
 
+import { useBotStore } from '../store/useBotStore';
+
 export default function LiveChatWidget() {
+  const { appConfig } = useBotStore();
   const [isOpen, setIsOpen] = useState(false);
   const [message, setMessage] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: 'msg-1',
       sender: 'agent',
-      text: 'Halo! Saya Budi dari Layanan Pelanggan Forex Bot AI. Ada yang bisa saya bantu mengenai pengaturan bot atau langganan Anda hari ini?',
+      text: `Halo! Saya Budi dari Layanan Pelanggan ${appConfig?.appName || 'Forex Bot AI'}. Ada yang bisa saya bantu mengenai pengaturan bot atau langganan Anda hari ini?`,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     }
   ]);

@@ -20,7 +20,10 @@ class RealSocketService {
     const store = useBotStore.getState();
     
     // Connect to NestJS Socket.io via native WebSocket transport
-    const wsUrl = 'ws://localhost:5000/socket.io/?EIO=4&transport=websocket';
+    const { appConfig } = useBotStore.getState();
+    const backendUrl = appConfig?.backendUrl || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+    const wsBase = backendUrl.replace(/^http/, 'ws');
+    const wsUrl = `${wsBase}/socket.io/?EIO=4&transport=websocket`;
     console.log(`[WebSocket] Connecting to ${wsUrl}...`);
     
     try {

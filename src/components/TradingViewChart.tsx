@@ -7,7 +7,7 @@ import { ShieldAlert } from 'lucide-react';
 
 export default function TradingViewChart() {
   const chartContainerRef = useRef<HTMLDivElement>(null);
-  const { chartData, selectedPair, activeTrades, tradeHistory, newsSentiments, fetchNewsSentiments } = useBotStore();
+  const { chartData, selectedPair, activeTrades, tradeHistory, newsSentiments, fetchNewsSentiments, theme } = useBotStore();
   const seriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
 
   useEffect(() => {
@@ -17,15 +17,20 @@ export default function TradingViewChart() {
   useEffect(() => {
     if (!chartContainerRef.current) return;
 
+    const isDark = theme === 'dark';
+    const bgColor = isDark ? '#090d16' : '#ffffff';
+    const textColor = isDark ? '#94a3b8' : '#475569';
+    const gridColor = isDark ? '#1e293b' : '#e2e8f0';
+
     // Create Chart
     const chart = createChart(chartContainerRef.current, {
       layout: {
-        background: { type: ColorType.Solid, color: '#0f172a' }, // slate-900
-        textColor: '#94a3b8', // slate-400
+        background: { type: ColorType.Solid, color: bgColor },
+        textColor: textColor,
       },
       grid: {
-        vertLines: { color: '#1e293b' }, // slate-800
-        horzLines: { color: '#1e293b' }, // slate-800
+        vertLines: { color: gridColor },
+        horzLines: { color: gridColor },
       },
       crosshair: {
         mode: 0, // Normal crosshair
@@ -33,11 +38,11 @@ export default function TradingViewChart() {
         horzLine: { color: '#64748b', width: 1, style: 3 },
       },
       rightPriceScale: {
-        borderColor: '#1e293b',
-        textColor: '#94a3b8',
+        borderColor: gridColor,
+        textColor: textColor,
       },
       timeScale: {
-        borderColor: '#1e293b',
+        borderColor: gridColor,
         timeVisible: true,
         secondsVisible: false,
       },
@@ -78,7 +83,7 @@ export default function TradingViewChart() {
       window.removeEventListener('resize', handleResize);
       chart.remove();
     };
-  }, [selectedPair]); // Recreate chart if pair changes
+  }, [selectedPair, theme]); // Recreate chart if pair or theme changes
 
   // Update chart data when new ticks arrive
   useEffect(() => {

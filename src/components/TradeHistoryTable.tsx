@@ -64,7 +64,7 @@ export default function TradeHistoryTable() {
 
       // Assemble the custom template sheet
       const institutionalData = [
-        ['FOREX BOT AI - INSTITUTIONAL PERFORMANCE REPORT'],
+        [`${useBotStore.getState().appConfig?.appName?.toUpperCase() || 'FOREX BOT AI'} - INSTITUTIONAL PERFORMANCE REPORT`],
         [],
         ['ACCOUNT INFORMATION', '', '', 'REPORT METADATA'],
         ['Account Holder:', user.email, '', 'Generated At:', new Date().toLocaleString()],

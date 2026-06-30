@@ -67,8 +67,8 @@ export default function ProductTour() {
       if (el) {
         const rect = el.getBoundingClientRect();
         setCoords({
-          top: rect.top + window.scrollY,
-          left: rect.left + window.scrollX,
+          top: rect.top,
+          left: rect.left,
           width: rect.width,
           height: rect.height
         });

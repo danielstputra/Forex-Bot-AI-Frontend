@@ -5,7 +5,7 @@ import { Bell, BellOff, CheckCheck, Eye, ShieldAlert } from 'lucide-react';
 import { useBotStore } from '../store/useBotStore';
 
 export default function NotificationBell() {
-  const { notifications, markAllAsRead } = useBotStore();
+  const { notifications, markAllAsRead, appConfig } = useBotStore();
   const [isOpen, setIsOpen] = useState(false);
   const [pushPermission, setPushPermission] = useState<NotificationPermission>('default');
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -34,9 +34,9 @@ export default function NotificationBell() {
     setPushPermission(permission);
     
     if (permission === 'granted') {
-      new Notification('Forex Bot AI', {
+      new Notification(appConfig?.appName || 'Forex Bot AI', {
         body: 'Notifikasi push desktop berhasil diaktifkan! Anda akan menerima peringatan eksekusi trading.',
-        icon: '/vercel.svg' // Fallback icon
+        icon: appConfig?.logoUrl || '/vercel.svg' // Fallback icon
       });
     }
   };

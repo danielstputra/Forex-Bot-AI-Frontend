@@ -34,12 +34,8 @@ interface BotState {
   setChartData: (pair: string, data: OhlcvData[]) => void;
   addChartTick: (pair: string, tick: OhlcvData) => void;
   
-  theme: 'dark' | 'light';
-  setTheme: (theme: 'dark' | 'light') => void;
-
   // SaaS Actions
   login: (email: string, password: string) => Promise<any>;
-  loginDemo: () => void;
   logout: () => void;
   upgradeSubscription: (tier: string) => Promise<void>;
   isUpgradeOpen: boolean;
@@ -216,9 +212,6 @@ interface BotState {
   googleLogin: (data: any) => Promise<any>;
 }
 
-
-
-
 const initialConfig: BotConfig = {
   riskLevel: 'MODERATE',
   tradeSize: 0.1,
@@ -324,25 +317,13 @@ export const useBotStore = create<BotState>((set, get) => ({
   roleMenuAccesses: [],
   userMenuPermissions: [],
   myAuthorizedMenus: [],
-  theme: 'dark',
-  setTheme: (theme) => {
-    set({ theme });
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('theme', theme);
-      if (theme === 'dark') {
-        document.documentElement.classList.add('dark');
-      } else {
-        document.documentElement.classList.remove('dark');
-      }
-    }
-  },
 
   initSession: async () => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
     if (!token) return;
 
     try {
-      const response = await fetch(`${getApiUrl()}/auth/profile`, {
+      const response = await fetch('http://localhost:5000/auth/profile', {
         headers: getHeaders()
       });
 
@@ -406,7 +387,7 @@ export const useBotStore = create<BotState>((set, get) => ({
 
     try {
       const endpoint = status === 'RUNNING' ? 'start' : 'stop';
-      const response = await fetch(`${getApiUrl()}/trading/bot/${endpoint}`, {
+      const response = await fetch(`http://localhost:5000/trading/bot/${endpoint}`, {
         method: 'POST',
         headers: getHeaders()
       });
@@ -434,7 +415,7 @@ export const useBotStore = create<BotState>((set, get) => ({
 
     try {
       const riskTolerance = newConfig.riskLevel === 'AGGRESSIVE' ? 3.0 : (newConfig.riskLevel === 'CONSERVATIVE' ? 1.0 : 2.0);
-      await fetch(`${getApiUrl()}/trading/config`, {
+      await fetch('http://localhost:5000/trading/config', {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify({
@@ -476,29 +457,8 @@ export const useBotStore = create<BotState>((set, get) => ({
   }),
 
   executeRealTrade: async (pair, type, lotSize, entryPrice) => {
-    // Bypass API for FREE tier
-    if (get().user?.tier === 'FREE') {
-      const newTrade: TradeRecord = {
-        id: 'MOCK-' + Math.floor(Math.random() * 10000),
-        pair,
-        type,
-        entryPrice,
-        lotSize,
-        status: 'OPEN',
-        timestamp: new Date().toISOString()
-      };
-      get().addTrade(newTrade);
-      get().addLog(
-        `[Eksekusi AI - MOCK] ORDER DUMMY BERHASIL: ${type} ${pair} pada harga ${entryPrice}. Ukuran Lot: ${lotSize}. ID: ${newTrade.id}`,
-        'SUCCESS'
-      );
-      get().addNotification(`Order Baru (Dummy): ${type} ${pair} dibuka pada harga ${entryPrice} (Lot: ${lotSize})`);
-      get().addAuditLog(`Mock Order Executed: ${type} ${pair} (Lot: ${lotSize})`);
-      return;
-    }
-
     try {
-      const response = await fetch(`${getApiUrl()}/trading/order`, {
+      const response = await fetch('http://localhost:5000/trading/order', {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify({
@@ -593,7 +553,7 @@ export const useBotStore = create<BotState>((set, get) => ({
 
     try {
       // Call stop bot on server which closes all positions in DB
-      await fetch(`${getApiUrl()}/trading/bot/stop`, {
+      await fetch('http://localhost:5000/trading/bot/stop', {
         method: 'POST',
         headers: getHeaders()
       });
@@ -693,7 +653,7 @@ export const useBotStore = create<BotState>((set, get) => ({
   // SaaS Actions
   login: async (email, password) => {
     try {
-      const response = await fetch(`${getApiUrl()}/auth/login`, {
+      const response = await fetch('http://localhost:5000/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
@@ -741,58 +701,6 @@ export const useBotStore = create<BotState>((set, get) => ({
     }
   },
   
-  loginDemo: () => {
-    localStorage.setItem('token', 'demo-token-123');
-    set((state) => ({
-      user: {
-        id: 'demo-user-id',
-        email: 'demo@forexbot.ai',
-        legalName: 'Demo Account (Mock)',
-        role: 'USER',
-        tier: 'FREE'
-      },
-      kycStatus: 'APPROVED',
-      status: 'IDLE',
-      activeTrades: [],
-      tradeHistory: [
-        {
-          id: 'T-DEMO1',
-          pair: 'EUR/USD',
-          type: 'BUY',
-          entryPrice: 1.0855,
-          exitPrice: 1.0875,
-          lotSize: 0.1,
-          profit: 20.00,
-          status: 'CLOSED',
-          timestamp: new Date(Date.now() - 3600000).toISOString(),
-          closedAt: new Date(Date.now() - 3000000).toISOString()
-        },
-        {
-          id: 'T-DEMO2',
-          pair: 'GBP/USD',
-          type: 'SELL',
-          entryPrice: 1.2720,
-          exitPrice: 1.2705,
-          lotSize: 0.2,
-          profit: 30.00,
-          status: 'CLOSED',
-          timestamp: new Date(Date.now() - 7200000).toISOString(),
-          closedAt: new Date(Date.now() - 6000000).toISOString()
-        }
-      ],
-      logs: [
-        {
-          id: `L-${Date.now()}`,
-          timestamp: new Date().toISOString(),
-          message: 'Membuka sesi demonstrasi instan menggunakan data simulasi.',
-          level: 'INFO'
-        }
-      ]
-    }));
-    get().addAuditLog('Demo User Login');
-    mockSocketService.connect();
-  },
-
   logout: () => {
     const userEmail = get().user?.email;
     localStorage.removeItem('token');
@@ -818,7 +726,7 @@ export const useBotStore = create<BotState>((set, get) => ({
   
   upgradeSubscription: async (tier) => {
     try {
-      const response = await fetch(`${getApiUrl()}/subscription/upgrade`, {
+      const response = await fetch('http://localhost:5000/subscription/upgrade', {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify({ tier })
@@ -958,7 +866,7 @@ export const useBotStore = create<BotState>((set, get) => ({
 
   fetchWallets: async () => {
     try {
-      const response = await fetch(`${getApiUrl()}/wallets`, {
+      const response = await fetch('http://localhost:5000/wallets', {
         headers: getHeaders()
       });
       if (response.ok) {
@@ -981,7 +889,7 @@ export const useBotStore = create<BotState>((set, get) => ({
       }
 
       const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-      const response = await fetch(`${getApiUrl()}/wallets/deposit`, {
+      const response = await fetch('http://localhost:5000/wallets/deposit', {
         method: 'POST',
         headers: token ? { 'Authorization': `Bearer ${token}` } : {},
         body: formData
@@ -1002,7 +910,7 @@ export const useBotStore = create<BotState>((set, get) => ({
 
   requestWithdrawal: async (currency, amount, paymentMethod, payoutDetails) => {
     try {
-      const response = await fetch(`${getApiUrl()}/wallets/withdraw`, {
+      const response = await fetch('http://localhost:5000/wallets/withdraw', {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify({ currency, amount, paymentMethod, payoutDetails })
@@ -1024,7 +932,7 @@ export const useBotStore = create<BotState>((set, get) => ({
 
   fetchVps: async () => {
     try {
-      const response = await fetch(`${getApiUrl()}/vps`, {
+      const response = await fetch('http://localhost:5000/vps', {
         headers: getHeaders()
       });
       if (response.ok) {
@@ -1038,7 +946,7 @@ export const useBotStore = create<BotState>((set, get) => ({
 
   deployVps: async (planName, region) => {
     try {
-      const response = await fetch(`${getApiUrl()}/vps/provision`, {
+      const response = await fetch('http://localhost:5000/vps/provision', {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify({ planName, region })
@@ -1061,7 +969,7 @@ export const useBotStore = create<BotState>((set, get) => ({
 
   fetchBrokerAccounts: async () => {
     try {
-      const response = await fetch(`${getApiUrl()}/broker/accounts`, {
+      const response = await fetch('http://localhost:5000/broker/accounts', {
         headers: getHeaders()
       });
       if (response.ok) {
@@ -1075,7 +983,7 @@ export const useBotStore = create<BotState>((set, get) => ({
 
   linkBrokerAccount: async (data) => {
     try {
-      const response = await fetch(`${getApiUrl()}/broker/link`, {
+      const response = await fetch('http://localhost:5000/broker/link', {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify(data)
@@ -1097,10 +1005,10 @@ export const useBotStore = create<BotState>((set, get) => ({
 
   fetchAdminFinancialQueue: async () => {
     try {
-      const depRes = await fetch(`${getApiUrl()}/backoffice/financial/deposits`, {
+      const depRes = await fetch('http://localhost:5000/backoffice/financial/deposits', {
         headers: getHeaders()
       });
-      const witRes = await fetch(`${getApiUrl()}/backoffice/financial/withdrawals`, {
+      const witRes = await fetch('http://localhost:5000/backoffice/financial/withdrawals', {
         headers: getHeaders()
       });
 
@@ -1116,7 +1024,7 @@ export const useBotStore = create<BotState>((set, get) => ({
 
   approveAdminDeposit: async (id) => {
     try {
-      const response = await fetch(`${getApiUrl()}/backoffice/financial/deposit/approve/${id}`, {
+      const response = await fetch(`http://localhost:5000/backoffice/financial/deposit/approve/${id}`, {
         method: 'POST',
         headers: getHeaders()
       });
@@ -1131,7 +1039,7 @@ export const useBotStore = create<BotState>((set, get) => ({
 
   rejectAdminDeposit: async (id) => {
     try {
-      const response = await fetch(`${getApiUrl()}/backoffice/financial/deposit/reject/${id}`, {
+      const response = await fetch(`http://localhost:5000/backoffice/financial/deposit/reject/${id}`, {
         method: 'POST',
         headers: getHeaders()
       });
@@ -1146,7 +1054,7 @@ export const useBotStore = create<BotState>((set, get) => ({
 
   approveAdminWithdrawal: async (id) => {
     try {
-      const response = await fetch(`${getApiUrl()}/backoffice/financial/withdraw/approve/${id}`, {
+      const response = await fetch(`http://localhost:5000/backoffice/financial/withdraw/approve/${id}`, {
         method: 'POST',
         headers: getHeaders()
       });
@@ -1161,7 +1069,7 @@ export const useBotStore = create<BotState>((set, get) => ({
 
   rejectAdminWithdrawal: async (id) => {
     try {
-      const response = await fetch(`${getApiUrl()}/backoffice/financial/withdraw/reject/${id}`, {
+      const response = await fetch(`http://localhost:5000/backoffice/financial/withdraw/reject/${id}`, {
         method: 'POST',
         headers: getHeaders()
       });
@@ -1177,11 +1085,11 @@ export const useBotStore = create<BotState>((set, get) => ({
   initTenant: async () => {
     try {
       const hostname = typeof window !== 'undefined' ? window.location.hostname : 'app.forexbot.ai';
-      const response = await fetch(`${getApiUrl()}/tenant/init?domain=${hostname}`);
+      const response = await fetch(`http://localhost:5000/tenant/init?domain=${hostname}`);
       if (response.ok) {
         const data = await response.json();
         set({
-          customLogoUrl: data.logoUrl ? `${getApiUrl()}${data.logoUrl}` : null
+          customLogoUrl: data.logoUrl ? `http://localhost:5000${data.logoUrl}` : null
         });
 
         // Dynamically apply brand colors in the DOM
@@ -1198,7 +1106,7 @@ export const useBotStore = create<BotState>((set, get) => ({
 
   updateTenantTheme: async (primaryColor, secondaryColor) => {
     try {
-      const response = await fetch(`${getApiUrl()}/tenant/theme`, {
+      const response = await fetch('http://localhost:5000/tenant/theme', {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify({ primaryColor, secondaryColor })
@@ -1220,7 +1128,7 @@ export const useBotStore = create<BotState>((set, get) => ({
       formData.append('logo', file);
 
       const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-      const response = await fetch(`${getApiUrl()}/tenant/logo`, {
+      const response = await fetch('http://localhost:5000/tenant/logo', {
         method: 'POST',
         headers: token ? { 'Authorization': `Bearer ${token}` } : {},
         body: formData
@@ -1239,7 +1147,7 @@ export const useBotStore = create<BotState>((set, get) => ({
 
   fetchAffiliateStats: async () => {
     try {
-      const response = await fetch(`${getApiUrl()}/affiliate/stats`, {
+      const response = await fetch('http://localhost:5000/affiliate/stats', {
         headers: getHeaders()
       });
       if (response.ok) {
@@ -1253,7 +1161,7 @@ export const useBotStore = create<BotState>((set, get) => ({
 
   requestAffiliatePayout: async (amount, paymentMethod, payoutDetails) => {
     try {
-      const response = await fetch(`${getApiUrl()}/affiliate/payout`, {
+      const response = await fetch('http://localhost:5000/affiliate/payout', {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify({ amount, paymentMethod, payoutDetails })
@@ -1275,7 +1183,7 @@ export const useBotStore = create<BotState>((set, get) => ({
 
   fetchSupportTickets: async () => {
     try {
-      const response = await fetch(`${getApiUrl()}/support/tickets`, {
+      const response = await fetch('http://localhost:5000/support/tickets', {
         headers: getHeaders()
       });
       if (response.ok) {
@@ -1289,7 +1197,7 @@ export const useBotStore = create<BotState>((set, get) => ({
 
   createSupportTicket: async (subject, category, description, priority) => {
     try {
-      const response = await fetch(`${getApiUrl()}/support/tickets`, {
+      const response = await fetch('http://localhost:5000/support/tickets', {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify({ subject, category, description, priority })
@@ -1311,7 +1219,7 @@ export const useBotStore = create<BotState>((set, get) => ({
 
   fetchSupportArticles: async () => {
     try {
-      const response = await fetch(`${getApiUrl()}/support/articles`, {
+      const response = await fetch('http://localhost:5000/support/articles', {
         headers: getHeaders()
       });
       if (response.ok) {
@@ -1325,7 +1233,7 @@ export const useBotStore = create<BotState>((set, get) => ({
 
   fetchLoyaltyStatus: async () => {
     try {
-      const response = await fetch(`${getApiUrl()}/loyalty/status`, {
+      const response = await fetch('http://localhost:5000/loyalty/status', {
         headers: getHeaders()
       });
       if (response.ok) {
@@ -1339,7 +1247,7 @@ export const useBotStore = create<BotState>((set, get) => ({
 
   claimLoyaltyReward: async (rewardName, pointsSpent) => {
     try {
-      const response = await fetch(`${getApiUrl()}/loyalty/claim`, {
+      const response = await fetch('http://localhost:5000/loyalty/claim', {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify({ rewardName, pointsSpent })
@@ -1361,7 +1269,7 @@ export const useBotStore = create<BotState>((set, get) => ({
 
   fetchEconomicEvents: async () => {
     try {
-      const response = await fetch(`${getApiUrl()}/market/economic-events`, {
+      const response = await fetch('http://localhost:5000/market/economic-events', {
         headers: getHeaders()
       });
       if (response.ok) {
@@ -1375,7 +1283,7 @@ export const useBotStore = create<BotState>((set, get) => ({
 
   fetchNewsSentiments: async () => {
     try {
-      const response = await fetch(`${getApiUrl()}/market/news-sentiment`, {
+      const response = await fetch('http://localhost:5000/market/news-sentiment', {
         headers: getHeaders()
       });
       if (response.ok) {
@@ -1389,7 +1297,7 @@ export const useBotStore = create<BotState>((set, get) => ({
 
   fetchPammPools: async () => {
     try {
-      const response = await fetch(`${getApiUrl()}/pamm/pools`, {
+      const response = await fetch('http://localhost:5000/pamm/pools', {
         headers: getHeaders()
       });
       if (response.ok) {
@@ -1403,7 +1311,7 @@ export const useBotStore = create<BotState>((set, get) => ({
 
   createPammPool: async (name, description, minInvestment, performanceFeePct) => {
     try {
-      const response = await fetch(`${getApiUrl()}/pamm/pools`, {
+      const response = await fetch('http://localhost:5000/pamm/pools', {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify({ name, description, minInvestment, performanceFeePct })
@@ -1420,7 +1328,7 @@ export const useBotStore = create<BotState>((set, get) => ({
 
   fetchPammInvestors: async (poolId) => {
     try {
-      const response = await fetch(`${getApiUrl()}/pamm/pools/${poolId}/investors`, {
+      const response = await fetch(`http://localhost:5000/pamm/pools/${poolId}/investors`, {
         headers: getHeaders()
       });
       if (response.ok) {
@@ -1443,7 +1351,7 @@ export const useBotStore = create<BotState>((set, get) => ({
 
   savePammAllocation: async (poolId, method, allocations) => {
     try {
-      const response = await fetch(`${getApiUrl()}/pamm/pools/${poolId}/allocation`, {
+      const response = await fetch(`http://localhost:5000/pamm/pools/${poolId}/allocation`, {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify({ method, allocations })
@@ -1465,7 +1373,7 @@ export const useBotStore = create<BotState>((set, get) => ({
 
   fetchPammPayouts: async () => {
     try {
-      const response = await fetch(`${getApiUrl()}/pamm/payouts`, {
+      const response = await fetch('http://localhost:5000/pamm/payouts', {
         headers: getHeaders()
       });
       if (response.ok) {
@@ -1487,7 +1395,7 @@ export const useBotStore = create<BotState>((set, get) => ({
 
   fetchApiKeys: async () => {
     try {
-      const response = await fetch(`${getApiUrl()}/developer/keys`, {
+      const response = await fetch('http://localhost:5000/developer/keys', {
         headers: getHeaders()
       });
       if (response.ok) {
@@ -1501,7 +1409,7 @@ export const useBotStore = create<BotState>((set, get) => ({
 
   generateApiKey: async (name, permission) => {
     try {
-      const response = await fetch(`${getApiUrl()}/developer/keys`, {
+      const response = await fetch('http://localhost:5000/developer/keys', {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify({ name, permission })
@@ -1520,7 +1428,7 @@ export const useBotStore = create<BotState>((set, get) => ({
 
   revokeApiKey: async (id, name) => {
     try {
-      const response = await fetch(`${getApiUrl()}/developer/keys/${id}`, {
+      const response = await fetch(`http://localhost:5000/developer/keys/${id}`, {
         method: 'DELETE',
         headers: getHeaders()
       });
@@ -1536,7 +1444,7 @@ export const useBotStore = create<BotState>((set, get) => ({
 
   fetchPriceAlerts: async () => {
     try {
-      const response = await fetch(`${getApiUrl()}/price-alerts`, {
+      const response = await fetch('http://localhost:5000/price-alerts', {
         headers: getHeaders()
       });
       if (response.ok) {
@@ -1550,7 +1458,7 @@ export const useBotStore = create<BotState>((set, get) => ({
 
   createPriceAlert: async (symbol, targetPrice, condition) => {
     try {
-      const response = await fetch(`${getApiUrl()}/price-alerts`, {
+      const response = await fetch('http://localhost:5000/price-alerts', {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify({ symbol, targetPrice, condition })
@@ -1567,7 +1475,7 @@ export const useBotStore = create<BotState>((set, get) => ({
 
   deletePriceAlert: async (id) => {
     try {
-      const response = await fetch(`${getApiUrl()}/price-alerts/${id}`, {
+      const response = await fetch(`http://localhost:5000/price-alerts/${id}`, {
         method: 'DELETE',
         headers: getHeaders()
       });
@@ -1582,7 +1490,7 @@ export const useBotStore = create<BotState>((set, get) => ({
 
   fetchLeaders: async () => {
     try {
-      const response = await fetch(`${getApiUrl()}/social/leaders`, {
+      const response = await fetch('http://localhost:5000/social/leaders', {
         headers: getHeaders()
       });
       if (response.ok) {
@@ -1596,7 +1504,7 @@ export const useBotStore = create<BotState>((set, get) => ({
 
   fetchCopyConnections: async () => {
     try {
-      const response = await fetch(`${getApiUrl()}/social/connections`, {
+      const response = await fetch('http://localhost:5000/social/connections', {
         headers: getHeaders()
       });
       if (response.ok) {
@@ -1610,7 +1518,7 @@ export const useBotStore = create<BotState>((set, get) => ({
 
   startCopying: async (leaderId, multiplier) => {
     try {
-      const response = await fetch(`${getApiUrl()}/social/copy/${leaderId}`, {
+      const response = await fetch(`http://localhost:5000/social/copy/${leaderId}`, {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify({ multiplier })
@@ -1632,7 +1540,7 @@ export const useBotStore = create<BotState>((set, get) => ({
 
   stopCopying: async (connectionId) => {
     try {
-      const response = await fetch(`${getApiUrl()}/social/copy/${connectionId}`, {
+      const response = await fetch(`http://localhost:5000/social/copy/${connectionId}`, {
         method: 'DELETE',
         headers: getHeaders()
       });
@@ -1651,7 +1559,7 @@ export const useBotStore = create<BotState>((set, get) => ({
   // ============================================================
   fetchInbox: async () => {
     try {
-      const response = await fetch(`${getApiUrl()}/inbox`, { headers: getHeaders() });
+      const response = await fetch('http://localhost:5000/inbox', { headers: getHeaders() });
       if (response.ok) {
         const inboxMessages = await response.json();
         set({ inboxMessages });
@@ -1663,7 +1571,7 @@ export const useBotStore = create<BotState>((set, get) => ({
 
   markMessageRead: async (id) => {
     try {
-      await fetch(`${getApiUrl()}/inbox/${id}/read`, { method: 'POST', headers: getHeaders() });
+      await fetch(`http://localhost:5000/inbox/${id}/read`, { method: 'POST', headers: getHeaders() });
       set((state) => ({
         inboxMessages: state.inboxMessages.map(m => m.id === id ? { ...m, isRead: true } : m)
       }));
@@ -1674,7 +1582,7 @@ export const useBotStore = create<BotState>((set, get) => ({
 
   markAllMessagesRead: async () => {
     try {
-      await fetch(`${getApiUrl()}/inbox/read-all`, { method: 'POST', headers: getHeaders() });
+      await fetch('http://localhost:5000/inbox/read-all', { method: 'POST', headers: getHeaders() });
       set((state) => ({
         inboxMessages: state.inboxMessages.map(m => ({ ...m, isRead: true }))
       }));
@@ -1685,7 +1593,7 @@ export const useBotStore = create<BotState>((set, get) => ({
 
   deleteInboxMessage: async (id) => {
     try {
-      await fetch(`${getApiUrl()}/inbox/${id}`, { method: 'DELETE', headers: getHeaders() });
+      await fetch(`http://localhost:5000/inbox/${id}`, { method: 'DELETE', headers: getHeaders() });
       set((state) => ({
         inboxMessages: state.inboxMessages.filter(m => m.id !== id)
       }));
@@ -1699,7 +1607,7 @@ export const useBotStore = create<BotState>((set, get) => ({
   // ============================================================
   fetchBacktestHistory: async () => {
     try {
-      const response = await fetch(`${getApiUrl()}/backtest/history`, { headers: getHeaders() });
+      const response = await fetch('http://localhost:5000/backtest/history', { headers: getHeaders() });
       if (response.ok) {
         const backtestHistoryList = await response.json();
         set({ backtestHistoryList });
@@ -1711,7 +1619,7 @@ export const useBotStore = create<BotState>((set, get) => ({
 
   saveBacktestResult: async (strategyName, params, result) => {
     try {
-      await fetch(`${getApiUrl()}/backtest/save`, {
+      await fetch('http://localhost:5000/backtest/save', {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify({ strategyName, paramsJson: params, resultJson: result })
@@ -1725,7 +1633,7 @@ export const useBotStore = create<BotState>((set, get) => ({
 
   deleteBacktestHistory: async (id) => {
     try {
-      await fetch(`${getApiUrl()}/backtest/history/${id}`, { method: 'DELETE', headers: getHeaders() });
+      await fetch(`http://localhost:5000/backtest/history/${id}`, { method: 'DELETE', headers: getHeaders() });
       set((state) => ({
         backtestHistoryList: state.backtestHistoryList.filter(h => h.id !== id)
       }));
@@ -1739,7 +1647,7 @@ export const useBotStore = create<BotState>((set, get) => ({
   // ============================================================
   fetchSubscriptionPlans: async () => {
     try {
-      const response = await fetch(`${getApiUrl()}/subscription/plans`, { headers: getHeaders() });
+      const response = await fetch('http://localhost:5000/subscription/plans', { headers: getHeaders() });
       if (response.ok) {
         const subscriptionPlans = await response.json();
         set({ subscriptionPlans });
@@ -1751,7 +1659,7 @@ export const useBotStore = create<BotState>((set, get) => ({
 
   fetchCurrentSubscription: async () => {
     try {
-      const response = await fetch(`${getApiUrl()}/subscription/current`, { headers: getHeaders() });
+      const response = await fetch('http://localhost:5000/subscription/current', { headers: getHeaders() });
       if (response.ok) {
         const currentSubscription = await response.json();
         set({ currentSubscription });
@@ -1763,7 +1671,7 @@ export const useBotStore = create<BotState>((set, get) => ({
 
   fetchInvoices: async () => {
     try {
-      const response = await fetch(`${getApiUrl()}/subscription/invoices`, { headers: getHeaders() });
+      const response = await fetch('http://localhost:5000/subscription/invoices', { headers: getHeaders() });
       if (response.ok) {
         const invoices = await response.json();
         set({ invoices });
@@ -1786,7 +1694,7 @@ export const useBotStore = create<BotState>((set, get) => ({
 
   fetchDbAuditLogs: async () => {
     try {
-      const response = await fetch(`${getApiUrl()}/auth/audit-logs`, { headers: getHeaders() });
+      const response = await fetch('http://localhost:5000/auth/audit-logs', { headers: getHeaders() });
       if (response.ok) {
         const dbAuditLogs = await response.json();
         set({ dbAuditLogs });
@@ -1798,7 +1706,7 @@ export const useBotStore = create<BotState>((set, get) => ({
 
   fetchKycDocuments: async () => {
     try {
-      const response = await fetch(`${getApiUrl()}/auth/kyc/documents`, { headers: getHeaders() });
+      const response = await fetch('http://localhost:5000/auth/kyc/documents', { headers: getHeaders() });
       if (response.ok) {
         const kycDocuments = await response.json();
         set({ kycDocuments });
@@ -1810,7 +1718,7 @@ export const useBotStore = create<BotState>((set, get) => ({
 
   submitKycDoc: async (data) => {
     try {
-      const response = await fetch(`${getApiUrl()}/auth/kyc/document`, {
+      const response = await fetch('http://localhost:5000/auth/kyc/document', {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify(data)
@@ -1833,7 +1741,7 @@ export const useBotStore = create<BotState>((set, get) => ({
 
   fetchBrokerSyncLogs: async (accountId) => {
     try {
-      const response = await fetch(`${getApiUrl()}/broker/sync-logs/${accountId}`, { headers: getHeaders() });
+      const response = await fetch(`http://localhost:5000/broker/sync-logs/${accountId}`, { headers: getHeaders() });
       if (response.ok) {
         const logs = await response.json();
         set((state) => ({
@@ -1847,7 +1755,7 @@ export const useBotStore = create<BotState>((set, get) => ({
 
   syncBrokerAccount: async (accountId) => {
     try {
-      const response = await fetch(`${getApiUrl()}/broker/sync/${accountId}`, {
+      const response = await fetch(`http://localhost:5000/broker/sync/${accountId}`, {
         method: 'POST',
         headers: getHeaders()
       });
@@ -1867,7 +1775,7 @@ export const useBotStore = create<BotState>((set, get) => ({
 
   fetchStrategyLicenses: async () => {
     try {
-      const response = await fetch(`${getApiUrl()}/trading/license`, { headers: getHeaders() });
+      const response = await fetch('http://localhost:5000/trading/license', { headers: getHeaders() });
       if (response.ok) {
         const strategyLicenses = await response.json();
         set({ strategyLicenses });
@@ -1879,7 +1787,7 @@ export const useBotStore = create<BotState>((set, get) => ({
 
   generateStrategyLicense: async (data) => {
     try {
-      const response = await fetch(`${getApiUrl()}/trading/license/generate`, {
+      const response = await fetch('http://localhost:5000/trading/license/generate', {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify(data)
@@ -1902,7 +1810,7 @@ export const useBotStore = create<BotState>((set, get) => ({
 
   revokeStrategyLicense: async (id) => {
     try {
-      const response = await fetch(`${getApiUrl()}/trading/license/${id}`, {
+      const response = await fetch(`http://localhost:5000/trading/license/${id}`, {
         method: 'DELETE',
         headers: getHeaders()
       });
@@ -1917,7 +1825,7 @@ export const useBotStore = create<BotState>((set, get) => ({
 
   fetchOrderExecutionLogs: async () => {
     try {
-      const response = await fetch(`${getApiUrl()}/trading/order-logs`, { headers: getHeaders() });
+      const response = await fetch('http://localhost:5000/trading/order-logs', { headers: getHeaders() });
       if (response.ok) {
         const orderExecutionLogs = await response.json();
         set({ orderExecutionLogs });
@@ -1929,7 +1837,7 @@ export const useBotStore = create<BotState>((set, get) => ({
 
   fetchAllTenants: async () => {
     try {
-      const response = await fetch(`${getApiUrl()}/tenant/all`, { headers: getHeaders() });
+      const response = await fetch('http://localhost:5000/tenant/all', { headers: getHeaders() });
       if (response.ok) {
         const tenants = await response.json();
         set({ tenants });
@@ -1941,7 +1849,7 @@ export const useBotStore = create<BotState>((set, get) => ({
 
   fetchTenantSubscriptions: async () => {
     try {
-      const response = await fetch(`${getApiUrl()}/tenant/subscriptions`, { headers: getHeaders() });
+      const response = await fetch('http://localhost:5000/tenant/subscriptions', { headers: getHeaders() });
       if (response.ok) {
         const tenantSubscriptions = await response.json();
         set({ tenantSubscriptions });
@@ -1953,7 +1861,7 @@ export const useBotStore = create<BotState>((set, get) => ({
 
   createTenantSubscription: async (data) => {
     try {
-      const response = await fetch(`${getApiUrl()}/tenant/subscriptions`, {
+      const response = await fetch('http://localhost:5000/tenant/subscriptions', {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify(data)
@@ -1970,7 +1878,7 @@ export const useBotStore = create<BotState>((set, get) => ({
 
   updateTenantSubscriptionStatus: async (id, status) => {
     try {
-      const response = await fetch(`${getApiUrl()}/tenant/subscriptions/${id}/status`, {
+      const response = await fetch(`http://localhost:5000/tenant/subscriptions/${id}/status`, {
         method: 'PATCH',
         headers: getHeaders(),
         body: JSON.stringify({ status })
@@ -1990,7 +1898,7 @@ export const useBotStore = create<BotState>((set, get) => ({
 
   fetchUsersList: async () => {
     try {
-      const response = await fetch(`${getApiUrl()}/backoffice/users`, { headers: getHeaders() });
+      const response = await fetch('http://localhost:5000/backoffice/users', { headers: getHeaders() });
       if (response.ok) {
         const usersList = await response.json();
         set({ usersList });
@@ -2002,7 +1910,7 @@ export const useBotStore = create<BotState>((set, get) => ({
 
   updateUserStatus: async (id, status) => {
     try {
-      const response = await fetch(`${getApiUrl()}/backoffice/users/${id}/status`, {
+      const response = await fetch(`http://localhost:5000/backoffice/users/${id}/status`, {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify({ status })
@@ -2018,7 +1926,7 @@ export const useBotStore = create<BotState>((set, get) => ({
 
   updateUserRole: async (id, role) => {
     try {
-      const response = await fetch(`${getApiUrl()}/backoffice/users/${id}/role`, {
+      const response = await fetch(`http://localhost:5000/backoffice/users/${id}/role`, {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify({ role })
@@ -2034,7 +1942,7 @@ export const useBotStore = create<BotState>((set, get) => ({
 
   fetchAppConfig: async () => {
     try {
-      const response = await fetch(`${getApiUrl()}/backoffice/config`, { headers: getHeaders() });
+      const response = await fetch('http://localhost:5000/backoffice/config', { headers: getHeaders() });
       if (response.ok) {
         const appConfig = await response.json();
         set({ appConfig });
@@ -2046,7 +1954,7 @@ export const useBotStore = create<BotState>((set, get) => ({
 
   updateAppConfig: async (config) => {
     try {
-      const response = await fetch(`${getApiUrl()}/backoffice/config`, {
+      const response = await fetch('http://localhost:5000/backoffice/config', {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify(config)
@@ -2065,7 +1973,7 @@ export const useBotStore = create<BotState>((set, get) => ({
 
   fetchSystemMenus: async () => {
     try {
-      const response = await fetch(`${getApiUrl()}/backoffice/menus`, { headers: getHeaders() });
+      const response = await fetch('http://localhost:5000/backoffice/menus', { headers: getHeaders() });
       if (response.ok) {
         const systemMenus = await response.json();
         set({ systemMenus });
@@ -2077,7 +1985,7 @@ export const useBotStore = create<BotState>((set, get) => ({
 
   createSystemMenu: async (data) => {
     try {
-      const response = await fetch(`${getApiUrl()}/backoffice/menus`, {
+      const response = await fetch('http://localhost:5000/backoffice/menus', {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify(data)
@@ -2093,7 +2001,7 @@ export const useBotStore = create<BotState>((set, get) => ({
 
   updateSystemMenu: async (id, data) => {
     try {
-      const response = await fetch(`${getApiUrl()}/backoffice/menus/${id}`, {
+      const response = await fetch(`http://localhost:5000/backoffice/menus/${id}`, {
         method: 'PUT',
         headers: getHeaders(),
         body: JSON.stringify(data)
@@ -2109,7 +2017,7 @@ export const useBotStore = create<BotState>((set, get) => ({
 
   deleteSystemMenu: async (id) => {
     try {
-      const response = await fetch(`${getApiUrl()}/backoffice/menus/${id}`, {
+      const response = await fetch(`http://localhost:5000/backoffice/menus/${id}`, {
         method: 'DELETE',
         headers: getHeaders()
       });
@@ -2125,7 +2033,7 @@ export const useBotStore = create<BotState>((set, get) => ({
   // ─── DYNAMIC ROLES & PERMISSIONS ACTIONS ─────────────────────────────────────
   fetchRolesList: async () => {
     try {
-      const response = await fetch(`${getApiUrl()}/backoffice/roles`, { headers: getHeaders() });
+      const response = await fetch('http://localhost:5000/backoffice/roles', { headers: getHeaders() });
       if (response.ok) {
         const rolesList = await response.json();
         set({ rolesList });
@@ -2137,7 +2045,7 @@ export const useBotStore = create<BotState>((set, get) => ({
 
   createRole: async (data) => {
     try {
-      const response = await fetch(`${getApiUrl()}/backoffice/roles`, {
+      const response = await fetch('http://localhost:5000/backoffice/roles', {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify(data)
@@ -2153,7 +2061,7 @@ export const useBotStore = create<BotState>((set, get) => ({
 
   deleteRole: async (id) => {
     try {
-      const response = await fetch(`${getApiUrl()}/backoffice/roles/${id}`, {
+      const response = await fetch(`http://localhost:5000/backoffice/roles/${id}`, {
         method: 'DELETE',
         headers: getHeaders()
       });
@@ -2168,7 +2076,7 @@ export const useBotStore = create<BotState>((set, get) => ({
 
   fetchRoleMenuAccess: async (roleId) => {
     try {
-      const response = await fetch(`${getApiUrl()}/backoffice/roles/${roleId}/menu-access`, { headers: getHeaders() });
+      const response = await fetch(`http://localhost:5000/backoffice/roles/${roleId}/menu-access`, { headers: getHeaders() });
       if (response.ok) {
         const roleMenuAccesses = await response.json();
         set({ roleMenuAccesses });
@@ -2180,7 +2088,7 @@ export const useBotStore = create<BotState>((set, get) => ({
 
   saveRoleMenuAccess: async (roleId, accesses) => {
     try {
-      const response = await fetch(`${getApiUrl()}/backoffice/roles/${roleId}/menu-access`, {
+      const response = await fetch(`http://localhost:5000/backoffice/roles/${roleId}/menu-access`, {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify({ accesses })
@@ -2197,7 +2105,7 @@ export const useBotStore = create<BotState>((set, get) => ({
 
   fetchUserMenuPermissions: async (userId) => {
     try {
-      const response = await fetch(`${getApiUrl()}/backoffice/users/${userId}/menu-permissions`, { headers: getHeaders() });
+      const response = await fetch(`http://localhost:5000/backoffice/users/${userId}/menu-permissions`, { headers: getHeaders() });
       if (response.ok) {
         const userMenuPermissions = await response.json();
         set({ userMenuPermissions });
@@ -2209,7 +2117,7 @@ export const useBotStore = create<BotState>((set, get) => ({
 
   saveUserMenuPermissions: async (userId, permissions) => {
     try {
-      const response = await fetch(`${getApiUrl()}/backoffice/users/${userId}/menu-permissions`, {
+      const response = await fetch(`http://localhost:5000/backoffice/users/${userId}/menu-permissions`, {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify({ permissions })
@@ -2226,7 +2134,7 @@ export const useBotStore = create<BotState>((set, get) => ({
 
   fetchMyAuthorizedMenus: async () => {
     try {
-      const response = await fetch(`${getApiUrl()}/backoffice/my-authorized-menus`, { headers: getHeaders() });
+      const response = await fetch('http://localhost:5000/backoffice/my-authorized-menus', { headers: getHeaders() });
       if (response.ok) {
         const myAuthorizedMenus = await response.json();
         set({ myAuthorizedMenus });
@@ -2239,7 +2147,7 @@ export const useBotStore = create<BotState>((set, get) => ({
   // ─── ADVANCED AUTH FLOW ACTIONS ──────────────────────────────────────────────
   registerUser: async (data) => {
     try {
-      const response = await fetch(`${getApiUrl()}/auth/register`, {
+      const response = await fetch('http://localhost:5000/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
@@ -2259,7 +2167,7 @@ export const useBotStore = create<BotState>((set, get) => ({
 
   verifyAccount: async (token) => {
     try {
-      const response = await fetch(`${getApiUrl()}/auth/verify`, {
+      const response = await fetch('http://localhost:5000/auth/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token })
@@ -2291,7 +2199,7 @@ export const useBotStore = create<BotState>((set, get) => ({
 
   verifyOtp: async (email, code) => {
     try {
-      const response = await fetch(`${getApiUrl()}/auth/verify-otp`, {
+      const response = await fetch('http://localhost:5000/auth/verify-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, code })
@@ -2323,7 +2231,7 @@ export const useBotStore = create<BotState>((set, get) => ({
 
   forgotPassword: async (email) => {
     try {
-      const response = await fetch(`${getApiUrl()}/auth/forgot-password`, {
+      const response = await fetch('http://localhost:5000/auth/forgot-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email })
@@ -2343,7 +2251,7 @@ export const useBotStore = create<BotState>((set, get) => ({
 
   resetPassword: async (data) => {
     try {
-      const response = await fetch(`${getApiUrl()}/auth/reset-password`, {
+      const response = await fetch('http://localhost:5000/auth/reset-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
@@ -2363,7 +2271,7 @@ export const useBotStore = create<BotState>((set, get) => ({
 
   googleLogin: async (data) => {
     try {
-      const response = await fetch(`${getApiUrl()}/auth/google-login`, {
+      const response = await fetch('http://localhost:5000/auth/google-login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
@@ -2394,9 +2302,3 @@ export const useBotStore = create<BotState>((set, get) => ({
   },
 }));
 
-
-
-function getApiUrl(): string {
-  const state = useBotStore.getState();
-  return state.appConfig?.backendUrl || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
-}

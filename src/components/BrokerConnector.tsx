@@ -2,13 +2,16 @@
 
 import React, { useState, useEffect } from 'react';
 import { useBotStore } from '../store/useBotStore';
-import { Shield, Link, Unlink, RefreshCw, Layers } from 'lucide-react';
+import { Shield, Link, Unlink, RefreshCw, Layers, Clock, CheckCircle2, XCircle } from 'lucide-react';
 
 export default function BrokerConnector() {
   const {
     brokerAccounts,
     fetchBrokerAccounts,
-    linkBrokerAccount
+    linkBrokerAccount,
+    brokerSyncLogs,
+    fetchBrokerSyncLogs,
+    syncBrokerAccount
   } = useBotStore();
 
   const [brokerName, setBrokerName] = useState('IC Markets');
@@ -20,10 +23,17 @@ export default function BrokerConnector() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [selectedAccId, setSelectedAccId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchBrokerAccounts();
   }, [fetchBrokerAccounts]);
+
+  useEffect(() => {
+    if (selectedAccId) {
+      fetchBrokerSyncLogs(selectedAccId);
+    }
+  }, [selectedAccId, fetchBrokerSyncLogs]);
 
   const handleLink = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,28 +59,34 @@ export default function BrokerConnector() {
     }
   };
 
+  const handleSync = async (accountId: string) => {
+    await syncBrokerAccount(accountId);
+  };
+
+  const logs = selectedAccId ? (brokerSyncLogs[selectedAccId] || []) : [];
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       {/* Link Account Form */}
-      <div className="lg:col-span-1 p-6 bg-white/5 border border-white/10 rounded-2xl space-y-4">
-        <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+      <div className="lg:col-span-1 p-6 bg-slate-900 border border-slate-800 rounded-3xl space-y-4 shadow-xl">
+        <h3 className="text-sm font-bold text-slate-100 uppercase tracking-wider font-mono flex items-center gap-2">
           <Link className="text-cyan-400 h-5 w-5" />
-          Link MT4 / MT5 Account
+          Hubungkan Akun MT4 / MT5
         </h3>
-        <p className="text-xs text-gray-400 leading-relaxed">
-          Hubungkan akun trading MT4 atau MT5 Anda untuk mengizinkan bot AI mengeksekusi order secara langsung pada broker Anda.
+        <p className="text-xs text-slate-400 leading-relaxed">
+          Hubungkan akun trading MT4 atau MT5 Anda agar bot AI dapat mengeksekusi order langsung ke broker Anda.
         </p>
 
-        {error && <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-400 text-xs rounded-lg">{error}</div>}
-        {success && <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs rounded-lg">{success}</div>}
+        {error && <div className="p-3 bg-red-950/40 border border-red-900/45 text-rose-400 text-xs rounded-xl font-mono">{error}</div>}
+        {success && <div className="p-3 bg-emerald-950/40 border border-emerald-900/45 text-emerald-400 text-xs rounded-xl font-mono">{success}</div>}
 
         <form onSubmit={handleLink} className="space-y-3">
           <div>
-            <label className="text-xs text-gray-400 block mb-1">Select Broker</label>
+            <label className="text-[10px] text-slate-400 uppercase font-mono block mb-1">Pilih Broker</label>
             <select
               value={brokerName}
               onChange={(e) => setBrokerName(e.target.value)}
-              className="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-white text-sm focus:outline-none focus:border-cyan-500"
+              className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-slate-200 text-xs focus:outline-none focus:border-cyan-500 font-mono"
             >
               <option value="IC Markets">IC Markets</option>
               <option value="Pepperstone">Pepperstone</option>
@@ -79,122 +95,184 @@ export default function BrokerConnector() {
             </select>
           </div>
           <div>
-            <label className="text-xs text-gray-400 block mb-1">Account Number (Login)</label>
+            <label className="text-[10px] text-slate-400 uppercase font-mono block mb-1">Nomor Akun (Login)</label>
             <input
               type="text"
               value={accountNumber}
               onChange={(e) => setAccountNumber(e.target.value)}
-              placeholder="e.g. 8920138"
-              className="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-white text-sm focus:outline-none focus:border-cyan-500 font-mono"
+              placeholder="Contoh: 8920138"
+              className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-slate-200 text-xs focus:outline-none focus:border-cyan-500 font-mono"
               required
             />
           </div>
           <div>
-            <label className="text-xs text-gray-400 block mb-1">Master Password</label>
+            <label className="text-[10px] text-slate-400 uppercase font-mono block mb-1">Kata Sandi Master</label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="••••••••"
-              className="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-white text-sm focus:outline-none focus:border-cyan-500"
+              className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-slate-200 text-xs focus:outline-none focus:border-cyan-500"
               required
             />
           </div>
           <div>
-            <label className="text-xs text-gray-400 block mb-1">Server Address</label>
+            <label className="text-[10px] text-slate-400 uppercase font-mono block mb-1">Alamat Server Broker</label>
             <input
               type="text"
               value={serverAddress}
               onChange={(e) => setServerAddress(e.target.value)}
-              placeholder="e.g. ICMarkets-Demo01"
-              className="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-white text-sm focus:outline-none focus:border-cyan-500 font-mono"
+              placeholder="Contoh: ICMarkets-Demo01"
+              className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-slate-200 text-xs focus:outline-none focus:border-cyan-500 font-mono"
               required
             />
           </div>
           <div>
-            <label className="text-xs text-gray-400 block mb-1">Leverage</label>
+            <label className="text-[10px] text-slate-400 uppercase font-mono block mb-1">Leverage</label>
             <select
               value={leverage}
               onChange={(e) => setLeverage(e.target.value)}
-              className="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-white text-sm focus:outline-none focus:border-cyan-500"
+              className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-slate-200 text-xs focus:outline-none focus:border-cyan-500 font-mono"
             >
               <option value="100">1:100</option>
               <option value="200">1:200</option>
-              <option value="500">1:500 (Recommended)</option>
+              <option value="500">1:500 (Rekomendasi)</option>
               <option value="1000">1:1000</option>
             </select>
           </div>
 
-          <div className="flex items-center gap-2 text-[10px] text-gray-500 font-mono">
+          <div className="flex items-center gap-2 text-[9px] text-slate-500 font-mono py-1">
             <Shield className="h-3 w-3 text-cyan-500" />
-            Password is encrypted using militar-grade AES-256-GCM.
+            Sandi dienkripsi aman dengan AES-256-GCM.
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-2.5 bg-cyan-500 hover:bg-cyan-600 disabled:bg-gray-700 text-white font-semibold rounded-xl text-sm transition-all shadow-lg shadow-cyan-500/15"
+            className="w-full py-3 bg-gradient-to-r from-cyan-500 to-purple-600 hover:from-cyan-600 hover:to-purple-700 disabled:opacity-50 text-white font-bold rounded-xl text-xs uppercase tracking-wider transition-all shadow-md active:scale-95"
           >
-            {loading ? 'Connecting to Broker...' : 'Connect Account'}
+            {loading ? 'Menghubungkan ke Broker...' : 'Hubungkan Akun'}
           </button>
         </form>
       </div>
 
-      {/* Connected Accounts List */}
-      <div className="lg:col-span-2 p-6 bg-white/5 border border-white/10 rounded-2xl space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-            <Layers className="text-cyan-400 h-5 w-5" />
-            Connected Broker Accounts
-          </h3>
-          <button
-            onClick={() => fetchBrokerAccounts()}
-            className="p-1.5 bg-white/5 hover:bg-white/10 text-gray-400 hover:text-white rounded-lg transition-all"
-          >
-            <RefreshCw className="h-4 w-4" />
-          </button>
+      {/* Connected Accounts & Logs List */}
+      <div className="lg:col-span-2 space-y-6">
+        <div className="p-6 bg-slate-900 border border-slate-800 rounded-3xl space-y-4 shadow-xl">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-bold text-slate-100 uppercase tracking-wider font-mono flex items-center gap-2">
+              <Layers className="text-cyan-400 h-5 w-5" />
+              Akun Broker Terhubung
+            </h3>
+            <button
+              onClick={() => fetchBrokerAccounts()}
+              className="p-1.5 bg-slate-950 hover:bg-slate-800 text-slate-400 hover:text-white rounded-lg transition-all border border-slate-850"
+            >
+              <RefreshCw className="h-4 w-4" />
+            </button>
+          </div>
+
+          {brokerAccounts.length === 0 ? (
+            <div className="h-[220px] flex flex-col items-center justify-center border border-dashed border-slate-800 rounded-2xl space-y-2 bg-slate-950/20">
+              <Unlink className="h-8 w-8 text-slate-600" />
+              <span className="text-xs text-slate-400 font-mono">Belum ada akun broker terhubung.</span>
+              <span className="text-[10px] text-slate-600 font-mono">Gunakan formulir di sebelah kiri.</span>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {brokerAccounts.map((acc) => (
+                <div
+                  key={acc.id}
+                  onClick={() => setSelectedAccId(acc.id)}
+                  className={`p-4 rounded-2xl border transition-all cursor-pointer ${
+                    selectedAccId === acc.id 
+                      ? 'bg-slate-950/80 border-cyan-500/50 shadow-md shadow-cyan-950/30' 
+                      : 'bg-slate-950/40 border-slate-800/80 hover:border-slate-750'
+                  }`}
+                >
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-xs font-bold text-slate-200 font-mono">{acc.brokerName}</h4>
+                        <span className="text-[9px] bg-emerald-950 text-emerald-400 border border-emerald-900/35 px-2 py-0.5 rounded-full font-bold font-mono">
+                          {acc.status}
+                        </span>
+                      </div>
+                      <div className="text-[10px] text-slate-500 font-mono">
+                        Login: {acc.accountNumber} | Leverage: 1:{acc.leverage}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-4 justify-between sm:justify-end">
+                      <div className="flex gap-4">
+                        <div>
+                          <span className="text-[9px] text-slate-500 font-mono block">SALDO</span>
+                          <span className="text-xs font-bold text-slate-200 font-mono">${acc.balance.toLocaleString('id-ID', { minimumFractionDigits: 2 })}</span>
+                        </div>
+                        <div>
+                          <span className="text-[9px] text-slate-500 font-mono block">EKUITAS</span>
+                          <span className="text-xs font-bold text-cyan-400 font-mono">${acc.equity.toLocaleString('id-ID', { minimumFractionDigits: 2 })}</span>
+                        </div>
+                      </div>
+
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleSync(acc.id);
+                        }}
+                        className="p-2 bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-cyan-500/30 rounded-xl text-slate-300 hover:text-cyan-455 transition-all"
+                        title="Sinkronkan Sekarang"
+                      >
+                        <RefreshCw className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
-        {brokerAccounts.length === 0 ? (
-          <div className="h-[320px] flex flex-col items-center justify-center border border-dashed border-white/10 rounded-xl space-y-2">
-            <Unlink className="h-8 w-8 text-gray-600" />
-            <span className="text-sm text-gray-400">No broker accounts connected.</span>
-            <span className="text-xs text-gray-600">Link an account using the form on the left.</span>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {brokerAccounts.map((acc) => (
-              <div
-                key={acc.id}
-                className="p-5 bg-white/5 border border-white/10 rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-4"
-              >
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <h4 className="text-md font-bold text-white">{acc.brokerName}</h4>
-                    <span className="text-[10px] bg-cyan-500/15 text-cyan-400 px-2 py-0.5 rounded-full font-semibold font-mono">
-                      {acc.status}
+        {/* Sync Logs Panel */}
+        {selectedAccId && (
+          <div className="p-6 bg-slate-900 border border-slate-800 rounded-3xl space-y-4 shadow-xl animate-scale-up">
+            <h3 className="text-xs font-bold text-slate-200 uppercase tracking-wider font-mono flex items-center gap-2">
+              <Clock className="text-cyan-400 h-4 w-4" />
+              Log Sinkronisasi Akun
+            </h3>
+
+            {logs.length === 0 ? (
+              <p className="text-[11px] text-slate-500 font-mono">Belum ada riwayat sinkronisasi untuk akun ini.</p>
+            ) : (
+              <div className="space-y-2 max-h-[220px] overflow-y-auto pr-2">
+                {logs.map((log: any) => (
+                  <div key={log.id} className="p-3 bg-slate-950/50 border border-slate-850 rounded-xl flex items-center justify-between text-xs font-mono">
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-1.5">
+                        {log.status === 'SUCCESS' ? (
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                        ) : (
+                          <XCircle className="w-3.5 h-3.5 text-rose-400" />
+                        )}
+                        <span className={`font-bold ${log.status === 'SUCCESS' ? 'text-emerald-400' : 'text-rose-400'}`}>
+                          {log.status}
+                        </span>
+                      </div>
+                      {log.errorMessage && (
+                        <p className="text-[10px] text-rose-400/80">{log.errorMessage}</p>
+                      )}
+                    </div>
+                    <span className="text-[10px] text-slate-500">
+                      {new Date(log.syncedAt).toLocaleString('id-ID')}
                     </span>
                   </div>
-                  <div className="text-xs text-gray-400 font-mono">
-                    Login: {acc.accountNumber} | Leverage: 1:{acc.leverage}
-                  </div>
-                </div>
-
-                <div className="flex gap-6">
-                  <div>
-                    <span className="text-[10px] text-gray-400 font-mono block">BALANCE</span>
-                    <span className="text-md font-bold text-white font-mono">${acc.balance.toLocaleString()}</span>
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-gray-400 font-mono block">EQUITY</span>
-                    <span className="text-md font-bold text-cyan-400 font-mono">${acc.equity.toLocaleString()}</span>
-                  </div>
-                </div>
+                ))}
               </div>
-            ))}
+            )}
           </div>
         )}
       </div>
     </div>
   );
 }
+
