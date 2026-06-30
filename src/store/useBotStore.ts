@@ -45,6 +45,7 @@ interface BotState {
 
   // SaaS Actions
   login: (email: string, password: string) => Promise<any>;
+  faceIdLogin: (email: string) => Promise<any>;
   loginDemo: () => void;
   logout: () => void;
   upgradeSubscription: (tier: string) => Promise<void>;
@@ -753,6 +754,53 @@ export const useBotStore = create<BotState>((set, get) => ({
       return { success: true };
     } catch (err: any) {
       console.error('Failed to log in:', err);
+      return { success: false, error: err.message };
+    }
+  },
+
+  faceIdLogin: async (email) => {
+    try {
+      const response = await fetch(`${getApiUrl()}/auth/faceid-login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || 'FaceID login gagal.');
+      }
+
+      localStorage.setItem('token', data.access_token);
+
+      set((state) => ({
+        user: {
+          id: data.user.id,
+          email: data.user.email,
+          legalName: data.user.legalName,
+          role: data.user.role,
+          tier: data.user.tier || 'BASIC',
+          twoFactorOn: data.user.twoFactorOn
+        },
+        kycStatus: data.user.kycStatus,
+        logs: [
+          {
+            id: `L-${Date.now()}`,
+            timestamp: new Date().toISOString(),
+            message: `Pengguna masuk via FaceID: ${data.user.email} (Peran: ${data.user.role})`,
+            level: 'SUCCESS',
+          },
+          ...state.logs
+        ]
+      }));
+
+      get().addAuditLog(`User FaceID Login: ${data.user.email}`);
+      get().fetchMyAuthorizedMenus();
+      mockSocketService.connect();
+      return { success: true };
+    } catch (err: any) {
+      console.error('Failed to log in via FaceID:', err);
       return { success: false, error: err.message };
     }
   },
@@ -2562,6 +2610,9 @@ export const useBotStore = create<BotState>((set, get) => ({
 
 
 function getApiUrl(): string {
+  if (process.env.NODE_ENV === 'development') {
+    return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+  }
   const state = useBotStore.getState();
   return state.appConfig?.backendUrl || process.env.NEXT_PUBLIC_API_URL || `${API_BASE_URL}`;
 }

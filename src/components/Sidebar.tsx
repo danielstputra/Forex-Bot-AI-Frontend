@@ -50,6 +50,9 @@ export default function Sidebar({
       return;
     }
     setActiveTab(id);
+    if (onClose) {
+      onClose();
+    }
   };
 
   return (
@@ -102,13 +105,22 @@ export default function Sidebar({
                 </>
               )}
             </div>
-            <button 
-              onClick={onToggleCollapse}
-              className="hidden lg:flex p-1.5 bg-slate-950/40 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 rounded-lg text-slate-400 hover:text-cyan-400 transition-all cursor-pointer"
-              title="Collapse Sidebar"
-            >
-              <Icons.ChevronLeft className="w-4 h-4" />
-            </button>
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={onToggleCollapse}
+                className="hidden lg:flex p-1.5 bg-slate-950/40 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 rounded-lg text-slate-400 hover:text-cyan-400 transition-all cursor-pointer"
+                title="Collapse Sidebar"
+              >
+                <Icons.ChevronLeft className="w-4 h-4" />
+              </button>
+              <button 
+                onClick={onClose}
+                className="lg:hidden p-1.5 bg-slate-950/40 hover:bg-slate-800 border border-slate-800 hover:border-slate-700 rounded-lg text-slate-400 hover:text-rose-400 transition-all cursor-pointer flex items-center justify-center"
+                title="Close Sidebar"
+              >
+                <Icons.X className="w-4 h-4" />
+              </button>
+            </div>
           </>
         )}
       </div>

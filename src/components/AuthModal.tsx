@@ -12,7 +12,7 @@ type AuthView = 'login' | 'register' | 'otp' | 'forgot' | 'reset' | 'success';
 
 export default function AuthModal() {
   const { 
-    login, loginDemo, registerUser, verifyAccount, verifyOtp, 
+    login, faceIdLogin, loginDemo, registerUser, verifyAccount, verifyOtp, 
     forgotPassword, resetPassword, googleLogin, appConfig, fetchAppConfig 
   } = useBotStore();
   const t = useI18nStore((state) => state.t);
@@ -60,6 +60,58 @@ export default function AuthModal() {
       }
     }
   }, [verifyAccount, fetchAppConfig]);
+
+  // Load and initialize Google Sign-In when client ID is available
+  useEffect(() => {
+    if (!appConfig?.googleClientId) return;
+
+    const id = 'google-gsi-script';
+    let script = document.getElementById(id) as HTMLScriptElement;
+
+    const initGoogle = () => {
+      const google = (window as any).google;
+      if (google) {
+        google.accounts.id.initialize({
+          client_id: appConfig.googleClientId,
+          callback: async (response: any) => {
+            setLoading(true);
+            setError('');
+            const res = await googleLogin({
+              idToken: response.credential
+            });
+            setLoading(false);
+            if (!res.success) {
+              setError(res.error || 'Gagal masuk dengan Google.');
+            }
+          }
+        });
+
+        const container = document.getElementById('google-login-container');
+        if (container) {
+          google.accounts.id.renderButton(container, {
+            theme: 'outline',
+            size: 'large',
+            width: container.offsetWidth || 380,
+            text: 'signin_with',
+            shape: 'rectangular',
+            logo_alignment: 'left'
+          });
+        }
+      }
+    };
+
+    if (!script) {
+      script = document.createElement('script');
+      script.id = id;
+      script.src = 'https://accounts.google.com/gsi/client';
+      script.async = true;
+      script.defer = true;
+      script.onload = initGoogle;
+      document.body.appendChild(script);
+    } else {
+      initGoogle();
+    }
+  }, [appConfig?.googleClientId, googleLogin, view]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -160,16 +212,20 @@ export default function AuthModal() {
   };
 
   const handleFaceIdLogin = () => {
+    if (!email) {
+      setError('Silakan isi alamat email Anda terlebih dahulu untuk masuk menggunakan FaceID.');
+      return;
+    }
+
     setIsScanning(true);
     setError('');
     
     // Simulate biometric face scanning for 1.8 seconds
     setTimeout(async () => {
       setIsScanning(false);
-      // Face ID login will use a pre-registered local account for demo
-      const res = await login('admin@forexbot.ai', 'Password123!');
+      const res = await faceIdLogin(email.trim());
       if (res && !res.success) {
-        setError('Sensor FaceID gagal mengenali wajah Anda. Silakan masuk menggunakan email.');
+        setError(res.error || 'Sensor FaceID gagal mengenali wajah Anda. Silakan masuk menggunakan email.');
       }
     }, 1800);
   };
@@ -525,31 +581,37 @@ export default function AuthModal() {
 
             {/* Google OAuth (if enabled) */}
             {(appConfig === null || appConfig?.oauthEnabled) && (
-              <button
-                type="button"
-                onClick={handleGoogleLoginClick}
-                className="w-full py-2.5 bg-slate-955/40 border border-slate-800 hover:border-cyan-500/40 text-slate-300 hover:text-slate-100 rounded-xl text-xs font-semibold font-mono transition-all duration-300 flex items-center justify-center gap-2 active:scale-95"
-              >
-                <svg className="w-4 h-4" viewBox="0 0 24 24">
-                  <path
-                    fill="#EA4335"
-                    d="M5.266 9.765A7.077 7.077 0 0 1 12 4.909c1.69 0 3.218.6 4.418 1.582L19.91 3C17.782 1.145 15.055 0 12 0 7.27 0 3.198 2.698 1.24 6.65l4.026 3.115Z"
-                  />
-                  <path
-                    fill="#FBBC05"
-                    d="M16.04 15.345c-1.077.733-2.433 1.164-4.04 1.164-2.755 0-5.09-1.86-5.923-4.364L2.05 15.26A11.932 11.932 0 0 0 12 24c3.245 0 6.18-1.09 8.41-2.964l-4.37-3.691Z"
-                  />
-                  <path
-                    fill="#4285F4"
-                    d="M23.766 12.273c0-.818-.073-1.609-.208-2.373H12v4.5h6.6c-.285 1.52-.14 2.808-1.56 3.69l4.37 3.692c2.555-2.355 4.356-5.82 4.356-9.509Z"
-                  />
-                  <path
-                    fill="#34A853"
-                    d="M2.05 8.74A11.947 11.947 0 0 0 0 12c0 1.16.166 2.285.474 3.35l4.357-3.385c-.083-.31-.13-.637-.13-.965 0-.895.2-1.74.565-2.5l-3.216-2.49L2.05 8.74Z"
-                  />
-                </svg>
-                Masuk dengan Google
-              </button>
+              appConfig?.googleClientId ? (
+                <div className="w-full flex justify-center py-1">
+                  <div id="google-login-container" className="w-full" style={{ minHeight: '40px' }} />
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleGoogleLoginClick}
+                  className="w-full py-2.5 bg-slate-955/40 border border-slate-800 hover:border-cyan-500/40 text-slate-300 hover:text-slate-100 rounded-xl text-xs font-semibold font-mono transition-all duration-300 flex items-center justify-center gap-2 active:scale-95"
+                >
+                  <svg className="w-4 h-4" viewBox="0 0 24 24">
+                    <path
+                      fill="#EA4335"
+                      d="M5.266 9.765A7.077 7.077 0 0 1 12 4.909c1.69 0 3.218.6 4.418 1.582L19.91 3C17.782 1.145 15.055 0 12 0 7.27 0 3.198 2.698 1.24 6.65l4.026 3.115Z"
+                    />
+                    <path
+                      fill="#FBBC05"
+                      d="M16.04 15.345c-1.077.733-2.433 1.164-4.04 1.164-2.755 0-5.09-1.86-5.923-4.364L2.05 15.26A11.932 11.932 0 0 0 12 24c3.245 0 6.18-1.09 8.41-2.964l-4.37-3.691Z"
+                    />
+                    <path
+                      fill="#4285F4"
+                      d="M23.766 12.273c0-.818-.073-1.609-.208-2.373H12v4.5h6.6c-.285 1.52-.14 2.808-1.56 3.69l4.37 3.692c2.555-2.355 4.356-5.82 4.356-9.509Z"
+                    />
+                    <path
+                      fill="#34A853"
+                      d="M12 19.5c-2.755 0-5.09-1.86-5.923-4.364L2.05 18.25A11.933 11.933 0 0 0 12 24c4.73 0 8.802-2.698 10.76-6.65l-4.026-3.115c-.958 2.505-3.293 4.365-6.734 4.365Z"
+                    />
+                  </svg>
+                  Masuk dengan Google (Demo)
+                </button>
+              )
             )}
 
             {/* Biometrics Login */}

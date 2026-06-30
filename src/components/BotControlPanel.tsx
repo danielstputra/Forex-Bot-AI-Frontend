@@ -251,7 +251,7 @@ export default function BotControlPanel() {
       </div>
 
       {/* Price Alerts Widget */}
-      <div className="pt-4 border-t border-slate-805 space-y-3">
+      <div className="pt-4 border-t border-slate-800 space-y-3">
         <div className="flex justify-between items-center">
           <label className="text-xs text-slate-200 font-mono font-bold uppercase tracking-wider">Price Alerts</label>
         </div>

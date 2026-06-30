@@ -21,7 +21,10 @@ class RealSocketService {
     
     // Connect to NestJS Socket.io via native WebSocket transport
     const { appConfig } = useBotStore.getState();
-    const backendUrl = appConfig?.backendUrl || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+    const isDev = process.env.NODE_ENV === 'development';
+    const backendUrl = isDev
+      ? (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000')
+      : (appConfig?.backendUrl || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000');
     const wsBase = backendUrl.replace(/^http/, 'ws');
     const wsUrl = `${wsBase}/socket.io/?EIO=4&transport=websocket`;
     console.log(`[WebSocket] Connecting to ${wsUrl}...`);
@@ -78,36 +81,13 @@ class RealSocketService {
       console.error('Failed to establish WebSocket connection:', err);
     }
 
-    // AI Simulation - Triggers real orders in database every 12 seconds if bot is running
+    // AI Simulation is now handled 100% autonomously by the Backend Trading Engine.
     this.aiIntervalId = setInterval(() => {
       const currentStore = useBotStore.getState();
       if (currentStore.status !== 'RUNNING') return;
-
       const pair = currentStore.selectedPair;
-      currentStore.addLog(`[AI Engine] Menganalisis pergerakan ${pair} secara real-time...`, 'INFO');
-
-      if (Math.random() < 0.3 && currentStore.activeTrades.length < 5) {
-        this.triggerRealTrade();
-      }
-    }, 12000);
-
-    // Trade Closer - Closes trades in database after some time
-    this.tradeCheckIntervalId = setInterval(() => {
-      const currentStore = useBotStore.getState();
-      if (currentStore.status !== 'RUNNING' || currentStore.activeTrades.length === 0) return;
-
-      const tradeToClose = currentStore.activeTrades[0];
-      if (Math.random() < 0.25) {
-        const exitPrice = this.currentPrices[tradeToClose.pair] || tradeToClose.entryPrice;
-        const pipsDiff = tradeToClose.type === 'BUY' 
-          ? exitPrice - tradeToClose.entryPrice 
-          : tradeToClose.entryPrice - exitPrice;
-        const multiplier = tradeToClose.pair === 'USD/JPY' ? 1000 : 100000;
-        const profit = parseFloat((pipsDiff * tradeToClose.lotSize * multiplier).toFixed(2));
-
-        currentStore.closeTrade(tradeToClose.id, exitPrice, profit);
-      }
-    }, 8000);
+      currentStore.addLog(`[Backend Engine] Monitoring market movements for ${pair}...`, 'INFO');
+    }, 15000);
   }
 
   private async triggerRealTrade() {

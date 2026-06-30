@@ -50,57 +50,57 @@ export default function Header({ onMenuClick, onProfileClick }: HeaderProps) {
         </button>
 
         {/* Financial Overview - Made scrollable on mobile */}
-        <div className="flex items-center gap-3 lg:gap-6 overflow-x-auto no-scrollbar py-1 flex-1 min-w-0 pr-2">
-        {/* Balance */}
-        <div className="flex items-center gap-3 bg-slate-950/40 px-4 py-2 rounded-2xl border border-slate-800/60">
-          <div className="p-1.5 bg-slate-800 rounded-lg text-slate-400">
-            <Wallet className="w-4 h-4" />
-          </div>
-          <div>
-            <div className="text-[10px] text-slate-400 uppercase font-mono tracking-wider">{t('header.balance')}</div>
-            <div className="text-sm font-semibold text-slate-200 font-mono">
-              {formatCurrency(stats.balance)}
+        <div className="flex items-center gap-2 sm:gap-3.5 lg:gap-6 overflow-x-auto no-scrollbar py-1 flex-1 min-w-0 pr-2">
+          {/* Balance */}
+          <div className="flex items-center gap-2 sm:gap-3 bg-slate-950/40 px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-xl sm:rounded-2xl border border-slate-800/60 shrink-0">
+            <div className="p-1 sm:p-1.5 bg-slate-800 rounded-lg text-slate-400">
+              <Wallet className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+            </div>
+            <div>
+              <div className="text-[9px] sm:text-[10px] text-slate-400 uppercase font-mono tracking-wider">{t('header.balance')}</div>
+              <div className="text-xs sm:text-sm font-semibold text-slate-200 font-mono">
+                {formatCurrency(stats.balance)}
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Equity */}
-        <div className={`flex items-center gap-3 bg-slate-950/40 px-4 py-2 rounded-2xl border border-slate-800/60 transition-colors duration-300 ${
-          equityFlash === 'up' ? 'bg-emerald-950/40 border-emerald-500/40' :
-          equityFlash === 'down' ? 'bg-rose-950/40 border-rose-500/40' : ''
-        }`}>
-          <div className={`p-1.5 rounded-lg transition-colors duration-300 ${
-            equityFlash === 'up' ? 'bg-emerald-500/20 text-emerald-400' :
-            equityFlash === 'down' ? 'bg-rose-500/20 text-rose-400' : 'bg-slate-800 text-slate-400'
+          {/* Equity */}
+          <div className={`flex items-center gap-2 sm:gap-3 bg-slate-950/40 px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-xl sm:rounded-2xl border border-slate-800/60 transition-colors duration-300 shrink-0 ${
+            equityFlash === 'up' ? 'bg-emerald-950/40 border-emerald-500/40' :
+            equityFlash === 'down' ? 'bg-rose-950/40 border-rose-500/40' : ''
           }`}>
-            {equityFlash === 'up' ? <ArrowUpRight className="w-4 h-4" /> :
-             equityFlash === 'down' ? <ArrowDownRight className="w-4 h-4" /> :
-             <Wallet className="w-4 h-4" />}
-          </div>
-          <div>
-            <div className="text-[10px] text-slate-400 uppercase font-mono tracking-wider">{t('header.equity')}</div>
-            <div className={`text-sm font-bold font-mono transition-colors duration-300 ${
-              equityFlash === 'up' ? 'text-emerald-400' :
-              equityFlash === 'down' ? 'text-rose-400' : 'text-slate-100'
+            <div className={`p-1 sm:p-1.5 rounded-lg transition-colors duration-300 ${
+              equityFlash === 'up' ? 'bg-emerald-500/20 text-emerald-400' :
+              equityFlash === 'down' ? 'bg-rose-500/20 text-rose-400' : 'bg-slate-800 text-slate-400'
             }`}>
-              {formatCurrency(stats.equity)}
+              {equityFlash === 'up' ? <ArrowUpRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> :
+               equityFlash === 'down' ? <ArrowDownRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" /> :
+               <Wallet className="w-3.5 h-3.5 sm:w-4 sm:h-4" />}
+            </div>
+            <div>
+              <div className="text-[9px] sm:text-[10px] text-slate-400 uppercase font-mono tracking-wider">{t('header.equity')}</div>
+              <div className={`text-xs sm:text-sm font-bold font-mono transition-colors duration-300 ${
+                equityFlash === 'up' ? 'text-emerald-400' :
+                equityFlash === 'down' ? 'text-rose-400' : 'text-slate-100'
+              }`}>
+                {formatCurrency(stats.equity)}
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Margin */}
-        <div className="flex items-center gap-3 bg-slate-950/40 px-4 py-2 rounded-2xl border border-slate-800/60">
-          <div className="p-1.5 bg-slate-800 rounded-lg text-slate-400">
-            <Shield className="w-4 h-4" />
-          </div>
-          <div>
-            <div className="text-[10px] text-slate-400 uppercase font-mono tracking-wider">{t('header.margin')}</div>
-            <div className="text-sm font-semibold text-slate-200 font-mono">
-              {formatCurrency(stats.margin)}
+          {/* Margin */}
+          <div className="flex items-center gap-2 sm:gap-3 bg-slate-950/40 px-2.5 py-1.5 sm:px-4 sm:py-2 rounded-xl sm:rounded-2xl border border-slate-800/60 shrink-0">
+            <div className="p-1 sm:p-1.5 bg-slate-800 rounded-lg text-slate-400">
+              <Shield className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+            </div>
+            <div>
+              <div className="text-[9px] sm:text-[10px] text-slate-400 uppercase font-mono tracking-wider">{t('header.margin')}</div>
+              <div className="text-xs sm:text-sm font-semibold text-slate-200 font-mono">
+                {formatCurrency(stats.margin)}
+              </div>
             </div>
           </div>
         </div>
-      </div>
     </div>
 
       {/* Control & Profile Area */}
