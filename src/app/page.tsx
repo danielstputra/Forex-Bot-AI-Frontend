@@ -12,6 +12,7 @@ import UpgradeModal from '@/components/UpgradeModal';
 import BacktestingView from '@/components/BacktestingView';
 import TwoFactorSetup from '@/components/TwoFactorSetup';
 import KycPortal from '@/components/KycPortal';
+import ProfileView from '@/components/ProfileView';
 import AffiliateDashboard from '@/components/AffiliateDashboard';
 import OfflineFallback from '@/components/OfflineFallback';
 import ProductTour from '@/components/ProductTour';
@@ -33,6 +34,8 @@ import { ShieldAlert, RefreshCw } from 'lucide-react';
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const { user, isUpgradeOpen, setUpgradeOpen, initSession, initTenant, appConfig, theme, setTheme } = useBotStore();
 
   // Sync theme store state with HTML class on mount
@@ -89,14 +92,21 @@ export default function Home() {
 
       {/* Sidebar - Navigation */}
       <div id="tour-sidebar">
-        <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
+        <Sidebar 
+          activeTab={activeTab} 
+          setActiveTab={setActiveTab} 
+          isOpen={isSidebarOpen}
+          onClose={() => setIsSidebarOpen(false)}
+          isCollapsed={isSidebarCollapsed}
+          onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+        />
       </div>
 
       {/* Main Container */}
       <div className="flex-1 flex flex-col h-full overflow-hidden bg-background">
         {/* Header - Account & Quick Controls */}
         <div id="tour-header">
-          <Header />
+          <Header onMenuClick={() => setIsSidebarOpen(true)} onProfileClick={() => setActiveTab('profile')} />
         </div>
 
         {/* Dynamic Page Content */}
@@ -210,6 +220,12 @@ export default function Home() {
           {activeTab === 'logs' && (
             <div className="h-[calc(100vh-140px)]">
               <AiConsole />
+            </div>
+          )}
+
+          {activeTab === 'profile' && (
+            <div className="min-h-[calc(100vh-140px)]">
+              <ProfileView />
             </div>
           )}
         </main>

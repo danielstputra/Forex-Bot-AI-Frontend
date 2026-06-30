@@ -2,13 +2,15 @@
 
 import React, { useState } from 'react';
 import { useI18nStore } from '../store/useI18nStore';
+import { useBotStore } from '../store/useBotStore';
 import { ShieldAlert, ShieldCheck, Key, Copy, Check } from 'lucide-react';
 
 export default function TwoFactorSetup() {
   const t = useI18nStore((state) => state.t);
+  const { setup2fa, user } = useBotStore();
   const [otp, setOtp] = useState('');
   const [isCopied, setIsCopied] = useState(false);
-  const [isVerified, setIsVerified] = useState(false);
+  const [isVerified, setIsVerified] = useState(user?.twoFactorOn || false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -20,7 +22,7 @@ export default function TwoFactorSetup() {
     setTimeout(() => setIsCopied(false), 2000);
   };
 
-  const handleVerify = (e: React.FormEvent) => {
+  const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
     if (otp.length !== 6 || isNaN(Number(otp))) {
       setError('Kode OTP harus berupa 6 digit angka.');
@@ -30,11 +32,16 @@ export default function TwoFactorSetup() {
     setLoading(true);
     setError('');
 
-    // Simulate OTP verification delay
-    setTimeout(() => {
+    try {
+      const res = await setup2fa(otp);
+      if (res.success) {
+        setIsVerified(true);
+      }
+    } catch (err: any) {
+      setError(err.message || 'Gagal memverifikasi OTP.');
+    } finally {
       setLoading(false);
-      setIsVerified(true);
-    }, 1000);
+    }
   };
 
   return (
@@ -70,35 +77,14 @@ export default function TwoFactorSetup() {
         /* Setup Guide */
         <div className="space-y-6">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-center bg-slate-950/30 border border-slate-850 p-4 rounded-2xl">
-            {/* Mock QR Code SVG */}
+            {/* Real QR Code */}
             <div className="bg-white p-2.5 rounded-xl flex items-center justify-center w-32 h-32 mx-auto sm:col-span-1 border border-slate-700 shadow">
-              <svg viewBox="0 0 100 100" className="w-full h-full text-slate-900">
-                <rect x="0" y="0" width="10" height="10" />
-                <rect x="20" y="0" width="10" height="10" />
-                <rect x="40" y="0" width="20" height="10" />
-                <rect x="70" y="0" width="10" height="10" />
-                <rect x="90" y="0" width="10" height="10" />
-                
-                <rect x="0" y="20" width="10" height="10" />
-                <rect x="30" y="20" width="20" height="20" />
-                <rect x="60" y="20" width="10" height="10" />
-                <rect x="80" y="20" width="20" height="10" />
-                
-                <rect x="10" y="40" width="20" height="10" />
-                <rect x="40" y="40" width="10" height="10" />
-                <rect x="70" y="40" width="30" height="10" />
-                
-                <rect x="0" y="60" width="30" height="10" />
-                <rect x="40" y="60" width="20" height="20" />
-                <rect x="70" y="60" width="10" height="10" />
-                <rect x="90" y="60" width="10" height="10" />
-                
-                <rect x="20" y="80" width="10" height="10" />
-                <rect x="70" y="80" width="20" height="20" />
-                
-                <rect x="0" y="90" width="10" height="10" />
-                <rect x="30" y="90" width="20" height="10" />
-              </svg>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img 
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(`otpauth://totp/ForexBotAI:${user?.email || 'user'}?secret=${secretKey}&issuer=ForexBotAI`)}`} 
+                alt="2FA QR Code" 
+                className="w-full h-full object-contain"
+              />
             </div>
             
             {/* Key Copy */}

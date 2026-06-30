@@ -197,7 +197,7 @@ export default function DeveloperPortal() {
                 <select
                   value={keyPermission}
                   onChange={(e) => setKeyPermission(e.target.value as any)}
-                  className="w-full bg-slate-955 border border-slate-855 rounded-xl px-4 py-2 text-slate-200 font-mono text-xs focus:outline-none focus:border-cyan-500"
+                  className="w-full bg-slate-955 border border-slate-850 rounded-xl px-4 py-2 text-slate-200 font-mono text-xs focus:outline-none focus:border-cyan-500"
                 >
                   <option>Read Only</option>
                   <option>Trade Execution</option>
@@ -278,7 +278,7 @@ export default function DeveloperPortal() {
                 <select
                   value={validDays}
                   onChange={(e) => setValidDays(e.target.value)}
-                  className="w-full bg-slate-955 border border-slate-855 rounded-xl px-4 py-2 text-slate-200 font-mono text-xs focus:outline-none focus:border-cyan-500"
+                  className="w-full bg-slate-955 border border-slate-850 rounded-xl px-4 py-2 text-slate-200 font-mono text-xs focus:outline-none focus:border-cyan-500"
                 >
                   <option value="30">30 Hari</option>
                   <option value="90">90 Hari</option>
@@ -357,7 +357,7 @@ export default function DeveloperPortal() {
                     placeholder="https://server-anda.com/api/webhook"
                     value={webhookUrl}
                     onChange={(e) => setWebhookUrl(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-855 rounded-xl px-4 py-2 text-slate-200 font-mono text-xs focus:outline-none focus:border-cyan-500"
+                    className="w-full bg-slate-950 border border-slate-850 rounded-xl px-4 py-2 text-slate-200 font-mono text-xs focus:outline-none focus:border-cyan-500"
                   />
                 </div>
                 

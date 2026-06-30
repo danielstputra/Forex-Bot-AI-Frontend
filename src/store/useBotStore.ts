@@ -10,6 +10,10 @@ export interface UserSession {
   legalName: string;
   role: 'USER' | 'MANAGER' | 'ADMIN' | 'SUPERADMIN';
   tier: 'FREE' | 'PREMIUM' | 'ENTERPRISE';
+  twoFactorOn?: boolean;
+  phone?: string;
+  country?: string;
+  kycStatus?: string;
 }
 
 interface BotState {
@@ -44,6 +48,8 @@ interface BotState {
   loginDemo: () => void;
   logout: () => void;
   upgradeSubscription: (tier: string) => Promise<void>;
+  setup2fa: (code: string) => Promise<{ success: boolean }>;
+  updateProfile: (data: { legalName?: string; phone?: string; country?: string; newPassword?: string }) => Promise<void>;
   isUpgradeOpen: boolean;
   setUpgradeOpen: (open: boolean) => void;
 
@@ -83,7 +89,7 @@ interface BotState {
   adminDeposits: any[];
   adminWithdrawals: any[];
   fetchWallets: () => Promise<void>;
-  requestDeposit: (currency: string, amount: number, paymentMethod: string, file: File | null) => Promise<void>;
+  requestDeposit: (currency: string, amount: number, paymentMethod: string, file: File | null) => Promise<any>;
   requestWithdrawal: (currency: string, amount: number, paymentMethod: string, payoutDetails: string) => Promise<void>;
   fetchVps: () => Promise<void>;
   deployVps: (planName: string, region: string) => Promise<void>;
@@ -94,6 +100,11 @@ interface BotState {
   rejectAdminDeposit: (id: string) => Promise<void>;
   approveAdminWithdrawal: (id: string) => Promise<void>;
   rejectAdminWithdrawal: (id: string) => Promise<void>;
+  adminSubscriptionPlans: any[];
+  fetchAdminSubscriptionPlans: () => Promise<void>;
+  createAdminSubscriptionPlan: (data: any) => Promise<void>;
+  updateAdminSubscriptionPlan: (id: string, data: any) => Promise<void>;
+  deleteAdminSubscriptionPlan: (id: string) => Promise<void>;
 
   // B2B White-Labeling Actions
   initTenant: () => Promise<void>;
@@ -356,7 +367,8 @@ export const useBotStore = create<BotState>((set, get) => ({
             email: profile.email,
             legalName: profile.legalName,
             role: profile.role,
-            tier: profile.tier || 'BASIC'
+            tier: profile.tier || 'BASIC',
+            twoFactorOn: profile.twoFactorOn
           },
           kycStatus: profile.kycStatus,
           config: {
@@ -719,7 +731,8 @@ export const useBotStore = create<BotState>((set, get) => ({
           email: data.user.email,
           legalName: data.user.legalName,
           role: data.user.role,
-          tier: data.user.tier || 'BASIC'
+          tier: data.user.tier || 'BASIC',
+          twoFactorOn: data.user.twoFactorOn
         },
         kycStatus: data.user.kycStatus,
         logs: [
@@ -851,6 +864,69 @@ export const useBotStore = create<BotState>((set, get) => ({
     } catch (err: any) {
       console.error('Failed to upgrade subscription:', err);
       get().addNotification(err.message || 'Upgrade subscription gagal.');
+    }
+  },
+  
+  setup2fa: async (code) => {
+    try {
+      const response = await fetch(`${getApiUrl()}/auth/2fa/setup`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify({ code })
+      });
+      const data = await response.json();
+      if (response.ok) {
+        set((state) => ({
+          user: state.user ? { ...state.user, twoFactorOn: true } : null,
+          logs: [
+            {
+              id: `L-${Date.now()}`,
+              timestamp: new Date().toISOString(),
+              message: 'Autentikasi Dua Faktor (2FA) berhasil diaktifkan pada akun.',
+              level: 'SUCCESS',
+            },
+            ...state.logs
+          ]
+        }));
+        get().addAuditLog('Two-Factor Authentication (2FA) Enabled');
+        get().addNotification('2FA berhasil diaktifkan!');
+        return { success: true };
+      } else {
+        throw new Error(data.message || 'Gagal mengaktifkan 2FA');
+      }
+    } catch (err: any) {
+      console.error('Failed to setup 2FA:', err);
+      get().addNotification(err.message || 'Aktivasi 2FA gagal.');
+      throw err;
+    }
+  },
+
+  updateProfile: async (payload) => {
+    try {
+      const response = await fetch(`${getApiUrl()}/auth/profile`, {
+        method: 'PUT',
+        headers: getHeaders(),
+        body: JSON.stringify(payload)
+      });
+      const data = await response.json();
+      if (response.ok) {
+        set((state) => ({
+          user: state.user ? { 
+            ...state.user, 
+            legalName: data.legalName,
+            phone: data.phone,
+            country: data.country
+          } : null
+        }));
+        get().addNotification('Profil berhasil diperbarui!');
+        get().addAuditLog('User Profile Updated');
+      } else {
+        throw new Error(data.message || 'Gagal memperbarui profil');
+      }
+    } catch (err: any) {
+      console.error('Failed to update profile:', err);
+      get().addNotification(err.message || 'Gagal memperbarui profil.');
+      throw err;
     }
   },
 
@@ -990,8 +1066,11 @@ export const useBotStore = create<BotState>((set, get) => ({
       });
 
       if (response.ok) {
+        const data = await response.json();
         get().addNotification(`Permintaan deposit sebesar ${amount} ${currency} berhasil diajukan.`);
         get().addAuditLog(`Deposit Request Submitted: ${amount} ${currency}`);
+        get().fetchWallets();
+        return data;
       } else {
         const errData = await response.json();
         throw new Error(errData.message || 'Gagal mengajukan deposit');
@@ -1173,6 +1252,68 @@ export const useBotStore = create<BotState>((set, get) => ({
       }
     } catch (err) {
       console.error('Failed to reject withdrawal:', err);
+    }
+  },
+
+  adminSubscriptionPlans: [],
+  fetchAdminSubscriptionPlans: async () => {
+    try {
+      const response = await fetch(`${getApiUrl()}/backoffice/subscription-plans`, {
+        headers: getHeaders()
+      });
+      if (response.ok) {
+        const adminSubscriptionPlans = await response.json();
+        set({ adminSubscriptionPlans });
+      }
+    } catch (err) {
+      console.error('Failed to fetch subscription plans:', err);
+    }
+  },
+
+  createAdminSubscriptionPlan: async (data) => {
+    try {
+      const response = await fetch(`${getApiUrl()}/backoffice/subscription-plans`, {
+        method: 'POST',
+        headers: getHeaders(),
+        body: JSON.stringify(data)
+      });
+      if (response.ok) {
+        get().addNotification('Paket langganan berhasil dibuat.');
+        get().fetchAdminSubscriptionPlans();
+      }
+    } catch (err) {
+      console.error('Failed to create subscription plan:', err);
+    }
+  },
+
+  updateAdminSubscriptionPlan: async (id, data) => {
+    try {
+      const response = await fetch(`${getApiUrl()}/backoffice/subscription-plans/${id}`, {
+        method: 'PUT',
+        headers: getHeaders(),
+        body: JSON.stringify(data)
+      });
+      if (response.ok) {
+        get().addNotification('Paket langganan berhasil diperbarui.');
+        get().fetchAdminSubscriptionPlans();
+      }
+    } catch (err) {
+      console.error('Failed to update subscription plan:', err);
+    }
+  },
+
+  deleteAdminSubscriptionPlan: async (id) => {
+    try {
+      const response = await fetch(`${getApiUrl()}/backoffice/subscription-plans/${id}`, {
+        method: 'DELETE',
+        headers: getHeaders()
+      });
+      if (response.ok) {
+        get().addNotification('Paket langganan berhasil dihapus.');
+        get().fetchAdminSubscriptionPlans();
+      }
+    } catch (err) {
+      console.error('Failed to delete subscription plan:', err);
     }
   },
 
@@ -2036,7 +2177,7 @@ export const useBotStore = create<BotState>((set, get) => ({
 
   fetchAppConfig: async () => {
     try {
-      const response = await fetch(`${getApiUrl()}/backoffice/config`, { headers: getHeaders() });
+      const response = await fetch(`${getApiUrl()}/auth/config`, { headers: getHeaders() });
       if (response.ok) {
         const appConfig = await response.json();
         set({ appConfig });

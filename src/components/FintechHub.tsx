@@ -21,6 +21,7 @@ export default function FintechHub() {
   const [paymentMethod, setPaymentMethod] = useState('BANK_TRANSFER');
   const [payoutDetails, setPayoutDetails] = useState('');
   const [proofFile, setProofFile] = useState<File | null>(null);
+  const [activeQrUrl, setActiveQrUrl] = useState<string | null>(null);
 
   const [vpsPlan, setVpsPlan] = useState('VPS Basic');
   const [vpsRegion, setVpsRegion] = useState('Singapore');
@@ -37,12 +38,18 @@ export default function FintechHub() {
     e.preventDefault();
     setLoading(true);
     setMsg({ type: '', text: '' });
+    setActiveQrUrl(null);
 
     try {
-      await requestDeposit(currency, parseFloat(amount), paymentMethod, proofFile);
-      setMsg({ type: 'success', text: 'Deposit submitted successfully! Awaiting admin approval.' });
-      setAmount('');
-      setProofFile(null);
+      const res = await requestDeposit(currency, parseFloat(amount), paymentMethod, proofFile);
+      if (paymentMethod === 'QRIS' && res?.qrUrl) {
+        setActiveQrUrl(res.qrUrl);
+        setMsg({ type: 'success', text: 'QRIS berhasil dibuat! Silakan scan untuk membayar.' });
+      } else {
+        setMsg({ type: 'success', text: 'Deposit submitted successfully! Awaiting admin approval.' });
+        setAmount('');
+        setProofFile(null);
+      }
     } catch (err: any) {
       setMsg({ type: 'error', text: err.message || 'Failed to submit deposit.' });
     } finally {
@@ -157,73 +164,197 @@ export default function FintechHub() {
 
           {/* Deposit & Withdraw Forms */}
           <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Deposit Form */}
-            <div className="p-6 bg-white/5 border border-white/10 rounded-2xl space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                  <ArrowDownRight className="text-cyan-400" />
-                  Deposit Funds
-                </h3>
+            {/* Deposit Form / QRIS Screen */}
+            {activeQrUrl ? (
+              <div className="p-6 bg-white/5 border border-white/10 rounded-2xl space-y-4 flex flex-col items-center text-center">
+                <div className="w-12 h-12 rounded-full bg-cyan-500/10 flex items-center justify-center text-cyan-400">
+                  <RefreshCw className="h-6 w-6 animate-spin" />
+                </div>
+                <div className="space-y-1">
+                  <h4 className="text-md font-bold text-white font-mono">PEMBAYARAN QRIS INSTAN</h4>
+                  <p className="text-xs text-slate-400 max-w-xs leading-relaxed">
+                    Scan QRIS di bawah ini menggunakan **GoPay, ShopeePay, DANA, OVO**, atau Mobile Banking Anda.
+                  </p>
+                </div>
+                <div className="bg-white p-3 rounded-2xl border border-slate-750 shadow-xl">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={activeQrUrl} alt="Midtrans QRIS Code" className="w-48 h-48 object-contain" />
+                </div>
+                <div className="space-y-1 text-xs">
+                  <div className="text-slate-500">Jumlah Bayar:</div>
+                  <div className="text-lg font-bold text-cyan-400 font-mono">
+                    Rp {(parseFloat(amount) * (currency === 'USD' ? 16000 : 1)).toLocaleString('id-ID')}
+                  </div>
+                  <div className="text-[10px] text-slate-500">
+                    (Setara dengan {currency === 'USD' ? '$' : ''}{amount} {currency !== 'USD' ? currency : ''})
+                  </div>
+                </div>
+                <div className="w-full pt-4 flex gap-3">
+                  <button
+                    onClick={() => {
+                      setActiveQrUrl(null);
+                      setAmount('');
+                      setProofFile(null);
+                      setMsg({ type: '', text: '' });
+                    }}
+                    className="flex-1 py-2.5 bg-slate-900 hover:bg-slate-855 border border-slate-850 text-slate-300 font-medium rounded-xl text-xs transition-all"
+                  >
+                    Tutup / Batalkan
+                  </button>
+                  <button
+                    onClick={async () => {
+                      setLoading(true);
+                      await fetchWallets();
+                      setLoading(false);
+                      setActiveQrUrl(null);
+                      setAmount('');
+                      setProofFile(null);
+                      setMsg({ type: 'success', text: 'Permintaan deposit QRIS diproses. Saldo akan otomatis bertambah saat pembayaran terverifikasi.' });
+                    }}
+                    className="flex-1 py-2.5 bg-cyan-500 hover:bg-cyan-600 text-white font-bold rounded-xl text-xs transition-all shadow-lg shadow-cyan-500/15"
+                  >
+                    Saya Sudah Bayar
+                  </button>
+                </div>
               </div>
-              <form onSubmit={handleDeposit} className="space-y-3">
-                <div>
-                  <label className="text-xs text-gray-400 block mb-1">Select Currency</label>
-                  <select
-                    value={currency}
-                    onChange={(e) => setCurrency(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-white text-sm focus:outline-none focus:border-cyan-500"
+            ) : (
+              <div className="p-6 bg-white/5 border border-white/10 rounded-2xl space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                    <ArrowDownRight className="text-cyan-400" />
+                    Deposit Funds
+                  </h3>
+                </div>
+                <form onSubmit={handleDeposit} className="space-y-3">
+                  <div>
+                    <label className="text-xs text-gray-400 block mb-1">Select Currency</label>
+                    <select
+                      value={currency}
+                      onChange={(e) => setCurrency(e.target.value)}
+                      className="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-white text-sm focus:outline-none focus:border-cyan-500"
+                    >
+                      <option value="USD">USD (Bank Transfer / QRIS)</option>
+                      <option value="USDT">USDT (TRC20 Crypto)</option>
+                      <option value="BTC">BTC (Bitcoin Network)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-400 block mb-1">Amount</label>
+                    <input
+                      type="number"
+                      value={amount}
+                      onChange={(e) => setAmount(e.target.value)}
+                      placeholder="Enter amount"
+                      className="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-white text-sm focus:outline-none focus:border-cyan-500"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-400 block mb-1">Payment Method</label>
+                    <select
+                      value={paymentMethod}
+                      onChange={(e) => setPaymentMethod(e.target.value)}
+                      className="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-white text-sm focus:outline-none focus:border-cyan-500"
+                    >
+                      {currency === 'USD' ? (
+                        <>
+                          <option value="BANK_TRANSFER">Bank Transfer (BCA/Mandiri)</option>
+                          <option value="QRIS">QRIS Instant Payment</option>
+                        </>
+                      ) : (
+                        <option value="CRYPTO">Crypto Wallet Transfer</option>
+                      )}
+                    </select>
+                  </div>
+
+                  {/* Dynamic Payment Details & QR Code */}
+                  {(() => {
+                    const selectedWallet = wallets.find((w) => w.currency === currency);
+                    
+                    if (currency === 'USD' && paymentMethod === 'BANK_TRANSFER') {
+                      return (
+                        <div className="p-3.5 bg-slate-950/80 border border-white/10 rounded-xl space-y-2.5">
+                          <span className="text-[10px] text-gray-400 font-mono block uppercase tracking-wider">Detail Transfer Bank</span>
+                          <div className="space-y-1 text-xs">
+                            <div className="flex justify-between">
+                              <span className="text-gray-500">Bank:</span>
+                              <span className="text-gray-200 font-semibold">BCA (Bank Central Asia)</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                              <span className="text-gray-500">No. Rekening:</span>
+                              <span className="text-cyan-400 font-mono font-bold select-all">8021308212</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-500">Nama Penerima:</span>
+                              <span className="text-gray-200 font-semibold">PT Forex Bot AI Global</span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    if (currency === 'USD' && paymentMethod === 'QRIS') {
+                      const payAmount = amount ? parseFloat(amount) : 0;
+                      const qrisUrl = `https://qris.online/pay/forexbotai?amount=${payAmount}`;
+                      return (
+                        <div className="p-3.5 bg-slate-950/80 border border-white/10 rounded-xl flex flex-col items-center gap-2.5 text-center">
+                          <span className="text-[10px] text-gray-400 font-mono block uppercase tracking-wider">Scan Kode QRIS</span>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img 
+                            src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(qrisUrl)}`} 
+                            alt="QRIS Deposit" 
+                            className="w-28 h-28 p-1 bg-white rounded-lg border border-slate-750"
+                          />
+                          <div className="space-y-0.5">
+                            <span className="text-[9px] text-gray-500 font-mono block">QRIS INSTANT PAYMENT</span>
+                            <span className="text-[11px] text-cyan-400 font-bold font-mono">IDR equivalent will be calculated</span>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    if ((currency === 'USDT' || currency === 'BTC') && selectedWallet?.address) {
+                      return (
+                        <div className="p-3.5 bg-slate-950/80 border border-white/10 rounded-xl flex flex-col items-center gap-2.5 text-center">
+                          <span className="text-[10px] text-gray-400 font-mono block uppercase tracking-wider">Scan Alamat Deposit {currency}</span>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img 
+                            src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(selectedWallet.address)}`} 
+                            alt={`${currency} Deposit`} 
+                            className="w-28 h-28 p-1 bg-white rounded-lg border border-slate-750"
+                          />
+                          <div className="space-y-1 w-full">
+                            <span className="text-[9px] text-gray-500 font-mono block">ALAMAT DOMPET {currency}</span>
+                            <span className="text-[10px] text-purple-400 font-mono font-bold select-all break-all block px-2 py-1 bg-white/5 rounded-lg border border-white/5">{selectedWallet.address}</span>
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    return null;
+                  })()}
+
+                  {paymentMethod !== 'QRIS' && (
+                    <div>
+                      <label className="text-xs text-gray-400 block mb-1">Upload Payment Proof (JPG, PNG, PDF)</label>
+                      <input
+                        type="file"
+                        onChange={(e) => setProofFile(e.target.files?.[0] || null)}
+                        className="w-full text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-cyan-500/20 file:text-cyan-400 file:cursor-pointer hover:file:bg-cyan-500/30"
+                        required={paymentMethod !== 'QRIS'}
+                      />
+                    </div>
+                  )}
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full py-2.5 bg-cyan-500 hover:bg-cyan-600 disabled:bg-gray-700 text-white font-medium rounded-xl text-sm transition-all shadow-lg shadow-cyan-500/15"
                   >
-                    <option value="USD">USD (Bank Transfer / QRIS)</option>
-                    <option value="USDT">USDT (TRC20 Crypto)</option>
-                    <option value="BTC">BTC (Bitcoin Network)</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="text-xs text-gray-400 block mb-1">Amount</label>
-                  <input
-                    type="number"
-                    value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
-                    placeholder="Enter amount"
-                    className="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-white text-sm focus:outline-none focus:border-cyan-500"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="text-xs text-gray-400 block mb-1">Payment Method</label>
-                  <select
-                    value={paymentMethod}
-                    onChange={(e) => setPaymentMethod(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-white text-sm focus:outline-none focus:border-cyan-500"
-                  >
-                    {currency === 'USD' ? (
-                      <>
-                        <option value="BANK_TRANSFER">Bank Transfer (BCA/Mandiri)</option>
-                        <option value="QRIS">QRIS Instant Payment</option>
-                      </>
-                    ) : (
-                      <option value="CRYPTO">Crypto Wallet Transfer</option>
-                    )}
-                  </select>
-                </div>
-                <div>
-                  <label className="text-xs text-gray-400 block mb-1">Upload Payment Proof (JPG, PNG, PDF)</label>
-                  <input
-                    type="file"
-                    onChange={(e) => setProofFile(e.target.files?.[0] || null)}
-                    className="w-full text-xs text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-cyan-500/20 file:text-cyan-400 file:cursor-pointer hover:file:bg-cyan-500/30"
-                    required
-                  />
-                </div>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full py-2.5 bg-cyan-500 hover:bg-cyan-600 disabled:bg-gray-700 text-white font-medium rounded-xl text-sm transition-all shadow-lg shadow-cyan-500/15"
-                >
-                  {loading ? 'Processing...' : 'Submit Deposit'}
-                </button>
-              </form>
-            </div>
+                    {loading ? 'Processing...' : 'Submit Deposit'}
+                  </button>
+                </form>
+              </div>
+            )}
 
             {/* Withdrawal Form */}
             <div className="p-6 bg-white/5 border border-white/10 rounded-2xl space-y-4">

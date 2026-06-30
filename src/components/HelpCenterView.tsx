@@ -147,7 +147,7 @@ export default function HelpCenterView() {
 
               {/* Chat Message Box */}
               <div className="flex-1 overflow-y-auto space-y-4 pr-2 mb-4 scrollbar-thin">
-                <div className="p-3 bg-slate-950 border border-slate-855 rounded-2xl text-xs text-slate-400 leading-relaxed font-mono">
+                <div className="p-3 bg-slate-950 border border-slate-850 rounded-2xl text-xs text-slate-400 leading-relaxed font-mono">
                   <span className="text-slate-500 font-bold block mb-1">PERTANYAAN AWAL:</span>
                   {activeTicket.description}
                 </div>
@@ -249,7 +249,7 @@ export default function HelpCenterView() {
                     value={newDesc}
                     onChange={(e) => setNewDesc(e.target.value)}
                     placeholder="Tuliskan sedetail mungkin kendala yang Anda hadapi agar tim kami dapat menganalisisnya dengan cepat..."
-                    className="w-full h-36 bg-slate-950 border border-slate-855 rounded-xl p-3 text-white text-xs focus:outline-none focus:border-cyan-500 resize-none font-mono"
+                    className="w-full h-36 bg-slate-950 border border-slate-850 rounded-xl p-3 text-white text-xs focus:outline-none focus:border-cyan-500 resize-none font-mono"
                   />
                 </div>
 

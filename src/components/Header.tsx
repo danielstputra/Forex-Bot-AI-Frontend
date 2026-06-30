@@ -8,9 +8,10 @@ import NotificationBell from './NotificationBell';
 
 interface HeaderProps {
   onMenuClick?: () => void;
+  onProfileClick?: () => void;
 }
 
-export default function Header({ onMenuClick }: HeaderProps) {
+export default function Header({ onMenuClick, onProfileClick }: HeaderProps) {
   const { stats, status, activeTrades, panicSell, user, logout, theme, setTheme } = useBotStore();
   const t = useI18nStore((state) => state.t);
   const [prevEquity, setPrevEquity] = useState(stats.equity);
@@ -145,7 +146,7 @@ export default function Header({ onMenuClick }: HeaderProps) {
         {/* User Session Info */}
         {user && (
           <div className="flex items-center gap-2 sm:gap-3.5">
-            <div className="text-right hidden sm:block">
+            <div onClick={onProfileClick} className="text-right hidden sm:block cursor-pointer hover:opacity-80 transition-opacity" title="Buka Profil Anda">
               <div className="text-xs font-bold text-slate-300 max-w-[120px] truncate font-mono">
                 {user.email.split('@')[0]}
               </div>

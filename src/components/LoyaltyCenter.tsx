@@ -175,7 +175,7 @@ export default function LoyaltyCenter() {
             <div className="space-y-3">
               <span className="text-[10px] text-slate-500 font-mono uppercase tracking-wider block">Tukar Hadiah Poin</span>
               {rewards.map((r) => (
-                <div key={r.name} className="bg-slate-955 border border-slate-855 p-3.5 rounded-xl flex justify-between items-center gap-3">
+                <div key={r.name} className="bg-slate-955 border border-slate-850 p-3.5 rounded-xl flex justify-between items-center gap-3">
                   <div className="text-left flex-1">
                     <span className="text-xs font-bold text-slate-300 block">{r.name}</span>
                     <span className="text-[9px] text-slate-500 font-mono leading-normal block">{r.desc}</span>
@@ -198,7 +198,7 @@ export default function LoyaltyCenter() {
                 <span className="text-[10px] text-slate-500 font-mono uppercase tracking-wider block">Klaim Terkini</span>
                 <div className="space-y-1.5">
                   {rewardClaimsList.map((claim: any) => (
-                    <div key={claim.id} className="flex justify-between items-center text-[10px] font-mono p-2 bg-slate-955 rounded-lg border border-slate-855/50">
+                    <div key={claim.id} className="flex justify-between items-center text-[10px] font-mono p-2 bg-slate-955 rounded-lg border border-slate-850/50">
                       <span className="text-slate-300 truncate max-w-[150px]">{claim.rewardName}</span>
                       <span className="text-emerald-400 font-bold">{claim.status}</span>
                     </div>

@@ -8,10 +8,11 @@ import {
   Users, DollarSign, Activity, Settings, CheckCircle, 
   XCircle, Ban, ShieldAlert, Cpu, HardDrive, Wifi, 
   Upload, Globe, Plus, Trash2, Palette, Award, Clock, 
-  ToggleLeft, ToggleRight, Shield, ShieldCheck, Check, Save 
+  ToggleLeft, ToggleRight, Shield, ShieldCheck, Check, Save,
+  Layers
 } from 'lucide-react';
 
-type AdminTab = 'kyc' | 'revenue' | 'health' | 'whitelabel' | 'financial' | 'b2b' | 'users' | 'config' | 'menus' | 'roles';
+type AdminTab = 'kyc' | 'revenue' | 'health' | 'whitelabel' | 'financial' | 'b2b' | 'users' | 'config' | 'menus' | 'roles' | 'plans';
 
 export default function BackofficeView() {
   const { 
@@ -28,7 +29,8 @@ export default function BackofficeView() {
     systemMenus, fetchSystemMenus, createSystemMenu, updateSystemMenu, deleteSystemMenu,
     rolesList, fetchRolesList, createRole, deleteRole,
     roleMenuAccesses, fetchRoleMenuAccess, saveRoleMenuAccess,
-    userMenuPermissions, fetchUserMenuPermissions, saveUserMenuPermissions
+    userMenuPermissions, fetchUserMenuPermissions, saveUserMenuPermissions,
+    adminSubscriptionPlans, fetchAdminSubscriptionPlans, createAdminSubscriptionPlan, updateAdminSubscriptionPlan, deleteAdminSubscriptionPlan
   } = useBotStore();
 
   const [activeSubTab, setActiveSubTab] = useState<AdminTab>('kyc');
@@ -38,6 +40,16 @@ export default function BackofficeView() {
   // Create Tenant Subscription Form State
   const [selectedTenantId, setSelectedTenantId] = useState('');
   const [planName, setPlanName] = useState('Standard White-Label');
+
+  // Subscription Plan CRUD Form State
+  const [planCrudId, setPlanCrudId] = useState<string | null>(null);
+  const [planCrudName, setPlanCrudName] = useState('');
+  const [planCrudTier, setPlanCrudTier] = useState('BASIC');
+  const [planCrudPrice, setPlanCrudPrice] = useState('');
+  const [planCrudMaxBots, setPlanCrudMaxBots] = useState('');
+  const [planCrudMaxBalance, setPlanCrudMaxBalance] = useState('');
+  const [planCrudCommissionPct, setPlanCrudCommissionPct] = useState('');
+  const [planCrudFeatures, setPlanCrudFeatures] = useState('');
   const [price, setPrice] = useState('499');
   const [validDays, setValidDays] = useState('365');
 
@@ -67,6 +79,9 @@ export default function BackofficeView() {
   const [smtpPass, setSmtpPass] = useState('');
   const [smtpSender, setSmtpSender] = useState('noreply@forexbot.ai');
   const [googleClientId, setGoogleClientId] = useState('');
+  const [activePaymentGateway, setActivePaymentGateway] = useState('MIDTRANS');
+  const [midtransServerKey, setMidtransServerKey] = useState('');
+  const [xenditApiKey, setXenditApiKey] = useState('');
 
   // System Menu Form State
   const [newMenuKey, setNewMenuKey] = useState('');
@@ -122,8 +137,10 @@ export default function BackofficeView() {
     } else if (activeSubTab === 'roles') {
       fetchRolesList();
       fetchUsersList();
+    } else if (activeSubTab === 'plans') {
+      fetchAdminSubscriptionPlans();
     }
-  }, [activeSubTab, fetchAllTenants, fetchTenantSubscriptions, fetchUsersList, fetchAppConfig, fetchSystemMenus, fetchRolesList]);
+  }, [activeSubTab, fetchAllTenants, fetchTenantSubscriptions, fetchUsersList, fetchAppConfig, fetchSystemMenus, fetchRolesList, fetchAdminSubscriptionPlans]);
 
   // Load appConfig into local state when fetched
   useEffect(() => {
@@ -151,6 +168,9 @@ export default function BackofficeView() {
       setSmtpPass(appConfig.smtpPass || '');
       setSmtpSender(appConfig.smtpSender || 'noreply@forexbot.ai');
       setGoogleClientId(appConfig.googleClientId || '');
+      setActivePaymentGateway(appConfig.activePaymentGateway || 'MIDTRANS');
+      setMidtransServerKey(appConfig.midtransServerKey || '');
+      setXenditApiKey(appConfig.xenditApiKey || '');
 
       try {
         setSelectedMenus(JSON.parse(appConfig.activeMenusJson));
@@ -303,7 +323,10 @@ export default function BackofficeView() {
       smtpUser,
       smtpPass,
       smtpSender,
-      googleClientId
+      googleClientId,
+      activePaymentGateway,
+      midtransServerKey,
+      xenditApiKey
     });
   };
 
@@ -469,6 +492,15 @@ export default function BackofficeView() {
         >
           <Award className="w-4 h-4" />
           B2B Tenants Sub
+        </button>
+        <button
+          onClick={() => setActiveSubTab('plans')}
+          className={`flex-1 py-2.5 px-4 rounded-xl text-xs font-bold font-mono flex items-center justify-center gap-2 transition-all duration-300 shrink-0 ${
+            activeSubTab === 'plans' ? 'bg-slate-800 text-cyan-400 border border-slate-700/30' : 'text-slate-455 hover:text-slate-200'
+          }`}
+        >
+          <Layers className="w-4 h-4" />
+          Manage Tiers
         </button>
       </div>
 
@@ -948,7 +980,7 @@ export default function BackofficeView() {
               </div>
 
               {/* Middle Branding & Metadata Settings */}
-              <div className="lg:col-span-1 space-y-4 bg-slate-955 border border-slate-855 p-5 rounded-2xl">
+              <div className="lg:col-span-1 space-y-4 bg-slate-955 border border-slate-850 p-5 rounded-2xl">
                 <h4 className="text-[11px] font-bold font-mono text-slate-400 uppercase tracking-wider border-b border-slate-850 pb-2">Branding & Meta Settings</h4>
                 
                 {/* App Name */}
@@ -1129,6 +1161,49 @@ export default function BackofficeView() {
                   </div>
                 )}
 
+                {/* Payment Gateway Configuration */}
+                <div className="pt-4 border-t border-slate-850/40 space-y-3">
+                  <label className="text-xs font-bold text-slate-200 block font-mono uppercase tracking-wider">Payment Gateway QRIS</label>
+                  <div className="space-y-2">
+                    <label className="text-[10px] text-slate-455 font-mono uppercase block">Active Gateway</label>
+                    <select
+                      value={activePaymentGateway}
+                      onChange={(e) => setActivePaymentGateway(e.target.value)}
+                      className="w-full bg-slate-900 border border-slate-800 rounded-xl p-2.5 text-slate-200 text-xs font-mono focus:outline-none focus:border-cyan-500"
+                    >
+                      <option value="MIDTRANS">Midtrans (Recommended)</option>
+                      <option value="XENDIT">Xendit (Recommended)</option>
+                      <option value="MANUAL">Manual Verification</option>
+                    </select>
+                  </div>
+
+                  {activePaymentGateway === 'MIDTRANS' && (
+                    <div className="space-y-1">
+                      <label className="text-[10px] text-slate-455 font-mono uppercase block">Midtrans Server Key</label>
+                      <input
+                        type="text"
+                        value={midtransServerKey}
+                        onChange={(e) => setMidtransServerKey(e.target.value)}
+                        placeholder="e.g. SB-Mid-server-..."
+                        className="w-full bg-slate-900 border border-slate-800 rounded-xl p-2.5 text-slate-200 text-xs font-mono focus:outline-none focus:border-cyan-500"
+                      />
+                    </div>
+                  )}
+
+                  {activePaymentGateway === 'XENDIT' && (
+                    <div className="space-y-1">
+                      <label className="text-[10px] text-slate-455 font-mono uppercase block">Xendit API Key (Secret Key)</label>
+                      <input
+                        type="text"
+                        value={xenditApiKey}
+                        onChange={(e) => setXenditApiKey(e.target.value)}
+                        placeholder="e.g. xnd_development_..."
+                        className="w-full bg-slate-900 border border-slate-800 rounded-xl p-2.5 text-slate-200 text-xs font-mono focus:outline-none focus:border-cyan-500"
+                      />
+                    </div>
+                  )}
+                </div>
+
                 {/* SMTP Enabled */}
                 <div className="flex justify-between items-center py-2 border-b border-slate-850/40">
                   <div>
@@ -1286,7 +1361,7 @@ export default function BackofficeView() {
             <div className="space-y-4">
               <h3 className="text-xs font-bold font-mono text-slate-300 uppercase tracking-wider">Pending Deposits Verification Queue</h3>
               {adminDeposits.length === 0 ? (
-                <div className="p-4 bg-slate-955 border border-slate-855 rounded-2xl text-center text-xs text-slate-500 font-mono">
+                <div className="p-4 bg-slate-955 border border-slate-850 rounded-2xl text-center text-xs text-slate-500 font-mono">
                   No pending deposits.
                 </div>
               ) : (
@@ -1392,7 +1467,7 @@ export default function BackofficeView() {
               </div>
 
               {/* Subdomain Management */}
-              <div className="bg-slate-955 border border-slate-855 p-5 rounded-2xl space-y-4">
+              <div className="bg-slate-955 border border-slate-850 p-5 rounded-2xl space-y-4">
                 <h4 className="text-[11px] font-bold font-mono text-slate-455 uppercase tracking-wider border-b border-slate-850 pb-2">Custom Subdomain Management</h4>
                 <form onSubmit={handleAddDomain} className="flex gap-2">
                   <div className="relative flex-1">
@@ -1416,7 +1491,7 @@ export default function BackofficeView() {
 
                 <div className="space-y-2 pt-2">
                   {customSubdomains.map((dom) => (
-                    <div key={dom} className="flex bg-slate-900 border border-slate-855 rounded-xl p-2.5 justify-between items-center">
+                    <div key={dom} className="flex bg-slate-900 border border-slate-850 rounded-xl p-2.5 justify-between items-center">
                       <span className="text-xs text-slate-250 font-mono">{dom}</span>
                       <button
                         onClick={() => handleRemoveDomain(dom)}
@@ -1813,6 +1888,244 @@ export default function BackofficeView() {
                 </div>
               </div>
 
+            </div>
+          </div>
+        )}
+
+        {/* ─── 11. TIERS MANAGEMENT TAB ────────────────────────────────── */}
+        {activeSubTab === 'plans' && (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center border-b border-slate-800 pb-4">
+              <h3 className="text-xs font-bold font-mono text-slate-300 uppercase tracking-wider">Subscription Tiers & Plan Constraints</h3>
+            </div>
+
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 items-start">
+              {/* Form Create/Edit Plan */}
+              <div className="bg-slate-955 border border-slate-850 p-5 rounded-2xl space-y-4">
+                <h4 className="text-[11px] font-bold font-mono text-slate-300 uppercase tracking-wider border-b border-slate-850 pb-2">
+                  {planCrudId ? 'Edit Paket Langganan' : 'Buat Paket Langganan Baru'}
+                </h4>
+                <form 
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    const payload = {
+                      name: planCrudName,
+                      tier: planCrudTier,
+                      price: parseFloat(planCrudPrice),
+                      maxBots: parseInt(planCrudMaxBots),
+                      maxBalance: parseFloat(planCrudMaxBalance),
+                      commissionPct: parseFloat(planCrudCommissionPct) / 100,
+                      features: planCrudFeatures.split(',').map(f => f.trim()).filter(Boolean)
+                    };
+                    if (planCrudId) {
+                      await updateAdminSubscriptionPlan(planCrudId, payload);
+                    } else {
+                      await createAdminSubscriptionPlan(payload);
+                    }
+                    setPlanCrudId(null);
+                    setPlanCrudName('');
+                    setPlanCrudTier('BASIC');
+                    setPlanCrudPrice('');
+                    setPlanCrudMaxBots('');
+                    setPlanCrudMaxBalance('');
+                    setPlanCrudCommissionPct('');
+                    setPlanCrudFeatures('');
+                  }} 
+                  className="space-y-3"
+                >
+                  <div>
+                    <label className="text-[10px] text-slate-400 uppercase font-mono block mb-1">Nama Paket</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Premium Plan"
+                      value={planCrudName}
+                      onChange={(e) => setPlanCrudName(e.target.value)}
+                      className="w-full bg-slate-900 border border-slate-800 rounded-xl p-2.5 text-slate-200 text-xs font-mono focus:outline-none focus:border-cyan-500"
+                      required
+                    />
+                  </div>
+                  {!planCrudId && (
+                    <div>
+                      <label className="text-[10px] text-slate-400 uppercase font-mono block mb-1">Kode Tier</label>
+                      <select
+                        value={planCrudTier}
+                        onChange={(e) => setPlanCrudTier(e.target.value)}
+                        className="w-full bg-slate-900 border border-slate-800 rounded-xl p-2.5 text-slate-200 text-xs font-mono focus:outline-none focus:border-cyan-500"
+                      >
+                        <option value="BASIC">BASIC</option>
+                        <option value="PREMIUM">PREMIUM</option>
+                        <option value="ENTERPRISE">ENTERPRISE</option>
+                      </select>
+                    </div>
+                  )}
+                  <div>
+                    <label className="text-[10px] text-slate-400 uppercase font-mono block mb-1">Harga Bulanan (USD)</label>
+                    <input
+                      type="number"
+                      placeholder="e.g. 99"
+                      value={planCrudPrice}
+                      onChange={(e) => setPlanCrudPrice(e.target.value)}
+                      className="w-full bg-slate-900 border border-slate-800 rounded-xl p-2.5 text-slate-200 text-xs font-mono focus:outline-none focus:border-cyan-500"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-slate-400 uppercase font-mono block mb-1">Max Active Bots</label>
+                    <input
+                      type="number"
+                      placeholder="e.g. 5"
+                      value={planCrudMaxBots}
+                      onChange={(e) => setPlanCrudMaxBots(e.target.value)}
+                      className="w-full bg-slate-900 border border-slate-800 rounded-xl p-2.5 text-slate-200 text-xs font-mono focus:outline-none focus:border-cyan-500"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-slate-400 uppercase font-mono block mb-1">Max Trading Balance (USD)</label>
+                    <input
+                      type="number"
+                      placeholder="e.g. 10000"
+                      value={planCrudMaxBalance}
+                      onChange={(e) => setPlanCrudMaxBalance(e.target.value)}
+                      className="w-full bg-slate-900 border border-slate-800 rounded-xl p-2.5 text-slate-200 text-xs font-mono focus:outline-none focus:border-cyan-500"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-slate-400 uppercase font-mono block mb-1">Profit Commission (%)</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      placeholder="e.g. 5"
+                      value={planCrudCommissionPct}
+                      onChange={(e) => setPlanCrudCommissionPct(e.target.value)}
+                      className="w-full bg-slate-900 border border-slate-800 rounded-xl p-2.5 text-slate-200 text-xs font-mono focus:outline-none focus:border-cyan-500"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-slate-400 uppercase font-mono block mb-1">Fitur (Pisahkan dengan koma)</label>
+                    <textarea
+                      placeholder="5 Active Bots, Max Balance $10k, 5% Commission"
+                      value={planCrudFeatures}
+                      onChange={(e) => setPlanCrudFeatures(e.target.value)}
+                      className="w-full bg-slate-900 border border-slate-800 rounded-xl p-2.5 text-slate-200 text-xs font-mono h-20 resize-none focus:outline-none focus:border-cyan-500"
+                      required
+                    />
+                  </div>
+                  <div className="flex gap-2 pt-2">
+                    {planCrudId && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPlanCrudId(null);
+                          setPlanCrudName('');
+                          setPlanCrudTier('BASIC');
+                          setPlanCrudPrice('');
+                          setPlanCrudMaxBots('');
+                          setPlanCrudMaxBalance('');
+                          setPlanCrudCommissionPct('');
+                          setPlanCrudFeatures('');
+                        }}
+                        className="flex-1 py-2.5 bg-slate-900 hover:bg-slate-850 border border-slate-800 text-slate-300 font-bold rounded-xl text-xs transition-all"
+                      >
+                        Batal
+                      </button>
+                    )}
+                    <button
+                      type="submit"
+                      className="flex-1 py-2.5 bg-cyan-500 hover:bg-cyan-600 text-slate-955 font-bold rounded-xl text-xs transition-all shadow-lg shadow-cyan-500/15"
+                    >
+                      {planCrudId ? 'Simpan Perubahan' : 'Buat Paket'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+
+              {/* List Plans */}
+              <div className="xl:col-span-2 space-y-4">
+                <h4 className="text-[11px] font-bold font-mono text-slate-400 uppercase tracking-wider">Paket Aktif Saat Ini</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {adminSubscriptionPlans?.map((plan) => {
+                    let featuresArr = [];
+                    try {
+                      featuresArr = JSON.parse(plan.featuresJson || '[]');
+                    } catch (e) {
+                      featuresArr = [];
+                    }
+                    return (
+                      <div key={plan.id} className="bg-slate-955 border border-slate-850 p-5 rounded-2xl space-y-4 relative flex flex-col justify-between">
+                        <div className="space-y-2">
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <span className="text-[9px] font-bold font-mono text-cyan-400 px-2 py-0.5 bg-cyan-950/40 rounded-md border border-cyan-900/30 uppercase">
+                                {plan.tier}
+                              </span>
+                              <h5 className="text-md font-black text-white mt-1">{plan.name}</h5>
+                            </div>
+                            <div className="text-right">
+                              <span className="text-lg font-black text-white font-mono">${plan.price}</span>
+                              <span className="text-[10px] text-slate-550 block font-mono">/ bulan</span>
+                            </div>
+                          </div>
+                          
+                          <div className="pt-2 grid grid-cols-3 gap-2 text-center text-[10px] font-mono">
+                            <div className="bg-slate-900/40 p-1.5 rounded-lg border border-slate-800/30">
+                              <span className="text-slate-500 block text-[8px] uppercase">Max Bots</span>
+                              <span className="text-slate-200 font-bold">{plan.maxBots}</span>
+                            </div>
+                            <div className="bg-slate-900/40 p-1.5 rounded-lg border border-slate-800/30">
+                              <span className="text-slate-500 block text-[8px] uppercase">Max Balance</span>
+                              <span className="text-slate-200 font-bold">${plan.maxBalance.toLocaleString()}</span>
+                            </div>
+                            <div className="bg-slate-900/40 p-1.5 rounded-lg border border-slate-800/30">
+                              <span className="text-slate-500 block text-[8px] uppercase">Comm. Fee</span>
+                              <span className="text-slate-200 font-bold">{plan.commissionPct * 100}%</span>
+                            </div>
+                          </div>
+
+                          <div className="space-y-1 pt-2">
+                            <span className="text-[9px] text-slate-550 font-mono uppercase block">Daftar Fitur:</span>
+                            <ul className="list-disc list-inside text-[11px] text-slate-400 space-y-0.5 font-sans">
+                              {featuresArr.map((f: string, idx: number) => (
+                                <li key={idx}>{f}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        </div>
+
+                        <div className="flex gap-2 pt-4 border-t border-slate-850/35">
+                          <button
+                            onClick={() => {
+                              setPlanCrudId(plan.id);
+                              setPlanCrudName(plan.name);
+                              setPlanCrudTier(plan.tier);
+                              setPlanCrudPrice(plan.price.toString());
+                              setPlanCrudMaxBots(plan.maxBots.toString());
+                              setPlanCrudMaxBalance(plan.maxBalance.toString());
+                              setPlanCrudCommissionPct((plan.commissionPct * 100).toString());
+                              setPlanCrudFeatures(featuresArr.join(', '));
+                            }}
+                            className="flex-1 py-1.5 bg-slate-900 hover:bg-slate-855 border border-slate-850 text-slate-300 font-bold rounded-lg text-[10px] transition-all"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (confirm('Apakah Anda yakin ingin menghapus paket ini?')) {
+                                deleteAdminSubscriptionPlan(plan.id);
+                              }
+                            }}
+                            className="flex-1 py-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 font-bold rounded-lg text-[10px] transition-all"
+                          >
+                            Hapus
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           </div>
         )}

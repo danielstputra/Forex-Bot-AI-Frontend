@@ -204,7 +204,7 @@ export default function AffiliateDashboard() {
                 value={payoutDetails}
                 onChange={(e) => setPayoutDetails(e.target.value)}
                 placeholder="BCA - 80213082 - A/N Budi Setiawan atau Alamat Wallet USDT"
-                className="w-full h-[76px] bg-slate-950 border border-slate-855 rounded-lg p-2 text-white text-xs focus:outline-none focus:border-cyan-500 resize-none font-mono"
+                className="w-full h-[76px] bg-slate-950 border border-slate-850 rounded-lg p-2 text-white text-xs focus:outline-none focus:border-cyan-500 resize-none font-mono"
                 required
               />
             </div>
