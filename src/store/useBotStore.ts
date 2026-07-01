@@ -185,6 +185,7 @@ interface BotState {
   fetchStrategyLicenses: () => Promise<void>;
   generateStrategyLicense: (data: { ipBound?: string; validDays?: number }) => Promise<any>;
   revokeStrategyLicense: (id: string) => Promise<void>;
+  deleteStrategyLicense: (id: string) => Promise<void>;
   orderExecutionLogs: any[];
   fetchOrderExecutionLogs: () => Promise<void>;
   tenants: any[];
@@ -2143,6 +2144,21 @@ export const useBotStore = create<BotState>((set, get) => ({
       }
     } catch (err) {
       console.error('Failed to revoke license:', err);
+    }
+  },
+
+  deleteStrategyLicense: async (id) => {
+    try {
+      const response = await fetch(`${getApiUrl()}/trading/license/${id}/purge`, {
+        method: 'DELETE',
+        headers: getHeaders()
+      });
+      if (response.ok) {
+        get().addNotification('Lisensi strategi berhasil dihapus.');
+        get().fetchStrategyLicenses();
+      }
+    } catch (err) {
+      console.error('Failed to delete license:', err);
     }
   },
 

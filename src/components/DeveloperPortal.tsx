@@ -14,6 +14,7 @@ export default function DeveloperPortal() {
     fetchStrategyLicenses,
     generateStrategyLicense,
     revokeStrategyLicense,
+    deleteStrategyLicense,
     orderExecutionLogs,
     fetchOrderExecutionLogs,
     addNotification
@@ -318,7 +319,7 @@ export default function DeveloperPortal() {
                           {lic.status}
                         </span>
                       </td>
-                      <td className="py-3 px-4 text-right">
+                      <td className="py-3 px-4 text-right flex items-center justify-end gap-2">
                         {lic.status === 'ACTIVE' && (
                           <button
                             onClick={() => revokeStrategyLicense(lic.id)}
@@ -327,6 +328,17 @@ export default function DeveloperPortal() {
                             Revoke
                           </button>
                         )}
+                        <button
+                          onClick={() => {
+                            if (confirm(`Apakah Anda yakin ingin menghapus lisensi ini secara permanen?`)) {
+                              deleteStrategyLicense(lic.id);
+                            }
+                          }}
+                          className="p-1.5 hover:bg-rose-955 hover:text-rose-450 text-slate-500 hover:text-rose-400 rounded-lg transition-all duration-300"
+                          title="Hapus Lisensi"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </td>
                     </tr>
                   ))}

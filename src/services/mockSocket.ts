@@ -5,6 +5,7 @@ class RealSocketService {
   private ws: WebSocket | null = null;
   private aiIntervalId: NodeJS.Timeout | null = null;
   private tradeCheckIntervalId: NodeJS.Timeout | null = null;
+  private fallbackIntervalId: NodeJS.Timeout | null = null;
   private currentPrices: Record<string, number> = {
     'EUR/USD': 1.0850,
     'GBP/USD': 1.2720,
@@ -34,6 +35,7 @@ class RealSocketService {
 
       this.ws.onopen = () => {
         store.addLog('Koneksi WebSocket terhubung ke server Backend asli.', 'SUCCESS');
+        this.stopFallbackTicks();
       };
 
       this.ws.onmessage = (event) => {
@@ -70,24 +72,68 @@ class RealSocketService {
       };
 
       this.ws.onclose = () => {
-        store.addLog('Koneksi WebSocket terputus dari server.', 'WARNING');
+        store.addLog('Koneksi WebSocket terputus dari server. Beralih ke simulasi lokal.', 'WARNING');
+        this.startFallbackTicks();
       };
       
       this.ws.onerror = () => {
-        store.addLog('Koneksi WebSocket mengalami error.', 'ERROR');
+        store.addLog('Koneksi WebSocket mengalami error. Beralih ke simulasi lokal.', 'ERROR');
+        this.startFallbackTicks();
       };
 
     } catch (err: any) {
       console.error('Failed to establish WebSocket connection:', err);
+      this.startFallbackTicks();
     }
 
     // AI Simulation is now handled 100% autonomously by the Backend Trading Engine.
+    if (this.aiIntervalId) clearInterval(this.aiIntervalId);
     this.aiIntervalId = setInterval(() => {
       const currentStore = useBotStore.getState();
       if (currentStore.status !== 'RUNNING') return;
       const pair = currentStore.selectedPair;
       currentStore.addLog(`[Backend Engine] Monitoring market movements for ${pair}...`, 'INFO');
     }, 15000);
+  }
+
+  private startFallbackTicks() {
+    if (this.fallbackIntervalId) return;
+    const store = useBotStore.getState();
+    
+    this.fallbackIntervalId = setInterval(() => {
+      const pair = store.selectedPair || 'EUR/USD';
+      const currentPrice = this.currentPrices[pair];
+      
+      const volatility = pair === 'USD/JPY' ? 0.05 : 0.0002;
+      const change = (Math.random() - 0.5) * volatility;
+      const price = parseFloat((currentPrice + change).toFixed(pair === 'USD/JPY' ? 3 : 5));
+      
+      this.currentPrices[pair] = price;
+
+      const time = Math.floor(Date.now() / 1000);
+      const roundedTime = time - (time % 60);
+      const open = parseFloat((price - change * 0.2).toFixed(pair === 'USD/JPY' ? 3 : 5));
+      const high = parseFloat((Math.max(price, open) + Math.random() * volatility * 0.2).toFixed(pair === 'USD/JPY' ? 3 : 5));
+      const low = parseFloat((Math.min(price, open) - Math.random() * volatility * 0.2).toFixed(pair === 'USD/JPY' ? 3 : 5));
+
+      const newBar: OhlcvData = {
+        time: roundedTime,
+        open,
+        high,
+        low,
+        close: price
+      };
+
+      store.addChartTick(pair, newBar);
+      this.updateEquityAndPL();
+    }, 2000);
+  }
+
+  private stopFallbackTicks() {
+    if (this.fallbackIntervalId) {
+      clearInterval(this.fallbackIntervalId);
+      this.fallbackIntervalId = null;
+    }
   }
 
   private async triggerRealTrade() {
@@ -123,6 +169,7 @@ class RealSocketService {
   }
 
   public disconnect() {
+    this.stopFallbackTicks();
     if (this.ws) {
       this.ws.close();
       this.ws = null;
