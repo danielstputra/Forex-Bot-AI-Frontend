@@ -67,7 +67,7 @@ export default function NotificationBell() {
 
       {/* Dropdown Panel */}
       {isOpen && (
-        <div className="absolute right-0 mt-2.5 w-80 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl z-50 overflow-hidden animate-scale-up">
+        <div className="fixed sm:absolute left-4 right-4 sm:left-auto sm:right-0 top-[72px] sm:top-auto sm:w-80 mt-2.5 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl z-50 overflow-hidden animate-scale-up">
           {/* Header */}
           <div className="px-4 py-3 border-b border-slate-850 flex items-center justify-between">
             <span className="text-xs font-bold font-mono text-slate-200">Notifikasi ({unreadCount})</span>
