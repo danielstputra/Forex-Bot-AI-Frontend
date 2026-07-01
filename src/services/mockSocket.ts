@@ -1,8 +1,9 @@
 import { useBotStore } from '../store/useBotStore';
 import { OhlcvData, TradeRecord } from '../types';
+import { io, Socket } from 'socket.io-client';
 
 class RealSocketService {
-  private ws: WebSocket | null = null;
+  private socket: Socket | null = null;
   private aiIntervalId: NodeJS.Timeout | null = null;
   private tradeCheckIntervalId: NodeJS.Timeout | null = null;
   private fallbackIntervalId: NodeJS.Timeout | null = null;
@@ -20,69 +21,59 @@ class RealSocketService {
   public connect() {
     const store = useBotStore.getState();
     
-    // Connect to NestJS Socket.io via native WebSocket transport
+    // Connect to NestJS Socket.io via official socket.io-client
     const { appConfig } = useBotStore.getState();
     const isDev = process.env.NODE_ENV === 'development';
     const backendUrl = isDev
       ? (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000')
       : (appConfig?.backendUrl || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000');
-    const wsBase = backendUrl.replace(/^http/, 'ws');
-    const wsUrl = `${wsBase}/socket.io/?EIO=4&transport=websocket`;
-    console.log(`[WebSocket] Connecting to ${wsUrl}...`);
+    
+    console.log(`[WebSocket] Connecting to Socket.io backend at ${backendUrl}...`);
     
     try {
-      this.ws = new WebSocket(wsUrl);
+      this.socket = io(backendUrl, {
+        transports: ['websocket', 'polling'], // Try websocket first, fallback to polling
+        reconnectionAttempts: 5,
+        reconnectionDelay: 2000,
+        autoConnect: true,
+      });
 
-      this.ws.onopen = () => {
+      this.socket.on('connect', () => {
         store.addLog('Koneksi WebSocket terhubung ke server Backend asli.', 'SUCCESS');
         this.stopFallbackTicks();
-      };
+      });
 
-      this.ws.onmessage = (event) => {
-        const raw = event.data;
-        
-        // Socket.io engine.io message type 42 represents a packet type message
-        if (typeof raw === 'string' && raw.startsWith('42')) {
-          try {
-            const parsed = JSON.parse(raw.substring(2));
-            const [eventName, ticks] = parsed;
+      this.socket.on('tick', (ticks: any) => {
+        if (Array.isArray(ticks)) {
+          ticks.forEach((tick: any) => {
+            const { pair, time, open, high, low, close } = tick;
+            this.currentPrices[pair] = close;
 
-            if (eventName === 'tick' && Array.isArray(ticks)) {
-              ticks.forEach((tick: any) => {
-                const { pair, time, open, high, low, close } = tick;
-                this.currentPrices[pair] = close;
+            // Update chart data in ZUSTAND store
+            const roundedTime = time - (time % 60);
+            const newBar: OhlcvData = { time: roundedTime, open, high, low, close };
+            store.addChartTick(pair, newBar);
+          });
 
-                // Update chart data in Zustand store
-                // Round time to 1-minute interval for 1m timeframe chart
-                const roundedTime = time - (time % 60);
-                const newBar: OhlcvData = { time: roundedTime, open, high, low, close };
-                store.addChartTick(pair, newBar);
-              });
-
-              // Update Equity based on active trades and real prices
-              this.updateEquityAndPL();
-            }
-          } catch (e) {
-            // Ignore parse errors for non-JSON or heartbeat frames
-          }
-        } else if (raw === '2') {
-          // Respond to Engine.io ping with a pong to keep connection alive
-          this.ws?.send('3');
+          // Update Equity based on active trades and real prices
+          this.updateEquityAndPL();
         }
-      };
+      });
 
-      this.ws.onclose = () => {
+      this.socket.on('disconnect', (reason) => {
+        console.warn('[WebSocket] Disconnected:', reason);
         store.addLog('Koneksi WebSocket terputus dari server. Beralih ke simulasi lokal.', 'WARNING');
         this.startFallbackTicks();
-      };
+      });
       
-      this.ws.onerror = () => {
-        store.addLog('Koneksi WebSocket mengalami error. Beralih ke simulasi lokal.', 'ERROR');
+      this.socket.on('connect_error', (error) => {
+        console.error('[WebSocket] Connection error:', error.message);
+        store.addLog('Koneksi WebSocket gagal terhubung. Beralih ke simulasi lokal.', 'ERROR');
         this.startFallbackTicks();
-      };
+      });
 
     } catch (err: any) {
-      console.error('Failed to establish WebSocket connection:', err);
+      console.error('Failed to establish Socket.io connection:', err);
       this.startFallbackTicks();
     }
 
@@ -170,9 +161,9 @@ class RealSocketService {
 
   public disconnect() {
     this.stopFallbackTicks();
-    if (this.ws) {
-      this.ws.close();
-      this.ws = null;
+    if (this.socket) {
+      this.socket.disconnect();
+      this.socket = null;
     }
     if (this.aiIntervalId) clearInterval(this.aiIntervalId);
     if (this.tradeCheckIntervalId) clearInterval(this.tradeCheckIntervalId);

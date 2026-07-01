@@ -705,16 +705,31 @@ export const useBotStore = create<BotState>((set, get) => ({
     const currentData = state.chartData[pair] || [];
     let updatedData = [...currentData];
     
-    if (updatedData.length > 0) {
-      const lastBar = updatedData[updatedData.length - 1];
-      if (lastBar.time === tick.time) {
-        updatedData[updatedData.length - 1] = tick;
-      } else {
-        updatedData.push(tick);
-      }
+    // Find if a bar with the exact timestamp already exists
+    const existingIndex = updatedData.findIndex(bar => bar.time === tick.time);
+    
+    if (existingIndex !== -1) {
+      // Update existing bar: preserve previous high/low values if they are more extreme
+      const existingBar = updatedData[existingIndex];
+      updatedData[existingIndex] = {
+        ...existingBar,
+        open: existingBar.open !== null ? existingBar.open : tick.open,
+        high: Math.max(existingBar.high || tick.close, tick.high || tick.close),
+        low: Math.min(existingBar.low || tick.close, tick.low || tick.close),
+        close: tick.close
+      };
     } else {
+      // Append the new bar
       updatedData.push(tick);
     }
+    
+    // Always sort by time in ascending order to prevent chart rendering freeze
+    updatedData.sort((a, b) => (a.time as number) - (b.time as number));
+    
+    // Filter out duplicates to satisfy lightweight-charts requirements
+    updatedData = updatedData.filter((bar, idx, self) => 
+      idx === self.findIndex(b => b.time === bar.time)
+    );
     
     if (updatedData.length > 500) {
       updatedData = updatedData.slice(updatedData.length - 500);
