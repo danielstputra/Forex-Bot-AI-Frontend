@@ -1047,48 +1047,221 @@ export const useBotStore = create<BotState>((set, get) => ({
     strategyParams: { ...state.strategyParams, ...params }
   })),
 
-  runBacktest: () => {
+  runBacktest: async () => {
     set({ backtestStatus: 'RUNNING', backtestProgress: 0, backtestResult: null });
     const store = get();
-    store.addLog('[SignalR Backtest] Menghubungkan ke layanan simulasi...', 'INFO');
+    const pair = store.selectedPair || 'EUR/USD';
+    store.addLog(`[Backtester] Memulai simulasi backtest pada data riil ${pair}...`, 'INFO');
 
-    let progress = 0;
-    const interval = setInterval(() => {
-      progress += 10;
-      set({ backtestProgress: progress });
-
-      if (progress === 10) {
-        store.addLog('[SignalR Backtest] Membaca 50,000 bar data historis EUR/USD (15m)...', 'INFO');
-      } else if (progress === 30) {
-        store.addLog(`[SignalR Backtest] Menerapkan filter indikator: MA Crossover (${store.strategyParams.maCrossover}), RSI (${store.strategyParams.rsiFilter}).`, 'INFO');
-      } else if (progress === 60) {
-        store.addLog(`[SignalR Backtest] Mensimulasikan eksekusi dengan toleransi risiko ${store.strategyParams.riskPercentage}% dan R:R ${store.strategyParams.riskRewardRatio}...`, 'INFO');
-      } else if (progress === 80) {
-        store.addLog('[SignalR Backtest] Menyusun drawdown portofolio & matrik analitik...', 'INFO');
-      } else if (progress === 100) {
-        clearInterval(interval);
-        
-        const winRate = 62.5;
-        const netProfit = 2450.50;
-        const result = {
-          netProfit,
-          profitFactor: 1.65,
-          maxDrawdown: 4.2,
-          winRate,
-          totalTrades: 54,
-          trades: []
-        };
-        
-        set({
-          backtestStatus: 'COMPLETED',
-          backtestResult: result
-        });
-        
-        store.addLog('[SignalR Backtest] Simulasi SELESAI. Menyimpan hasil ke database...', 'SUCCESS');
-        // Auto-save to database
-        get().saveBacktestResult('AI Strategy (MA+RSI)', store.strategyParams, result);
+    try {
+      set({ backtestProgress: 15 });
+      store.addLog(`[Backtester] Mengunduh 30 hari data historis riil ${pair} (Interval 1 Jam)...`, 'INFO');
+      
+      const response = await fetch(`${getApiUrl()}/market-data/history?pair=${pair}&range=30d&interval=1h`, {
+        headers: getHeaders()
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error ${response.status} saat mengambil data pasar`);
       }
-    }, 400);
+      
+      const resultData = await response.json();
+      const data = resultData.data || [];
+      
+      if (!Array.isArray(data) || data.length < 30) {
+        throw new Error('Data historis tidak mencukupi untuk melakukan backtesting (minimal 30 candle diperlukan).');
+      }
+
+      set({ backtestProgress: 40 });
+      store.addLog(`[Backtester] Sukses mengunduh ${data.length} candle riil. Menghitung indikator Moving Average & RSI...`, 'INFO');
+
+      const getSMA = (candles: any[], index: number, period: number): number => {
+        let sum = 0;
+        for (let i = 0; i < period; i++) {
+          sum += candles[index - i].close;
+        }
+        return sum / period;
+      };
+
+      const getRSI = (candles: any[], index: number, period: number): number => {
+        let gains = 0;
+        let losses = 0;
+        for (let i = 1; i <= period; i++) {
+          const diff = candles[index - period + i].close - candles[index - period + i - 1].close;
+          if (diff > 0) gains += diff;
+          else losses -= diff;
+        }
+        if (losses === 0) return 100;
+        const rs = gains / losses;
+        return 100 - (100 / (1 + rs));
+      };
+
+      set({ backtestProgress: 60 });
+      store.addLog('[Backtester] Mensimulasikan eksekusi transaksi berdasarkan parameter strategi...', 'INFO');
+
+      let totalTrades = 0;
+      let winTrades = 0;
+      let lossTrades = 0;
+      let netProfit = 0;
+      let totalWinProfit = 0;
+      let totalLossValue = 0;
+      let maxDrawdown = 0;
+      let peakBalance = 10000;
+      let balance = 10000;
+
+      let activeTrade: { type: 'BUY' | 'SELL'; entryPrice: number; sl: number; tp: number; size: number } | null = null;
+      const simulatedTradesList: any[] = [];
+
+      const maCrossoverActive = store.strategyParams.maCrossover;
+      const rsiFilterActive = store.strategyParams.rsiFilter;
+      const riskPct = store.strategyParams.riskPercentage || 1;
+      const rrRatio = store.strategyParams.riskRewardRatio || 2;
+
+      for (let i = 30; i < data.length; i++) {
+        const candle = data[i];
+
+        if (activeTrade) {
+          if (activeTrade.type === 'BUY') {
+            if (candle.low <= activeTrade.sl) {
+              const lossVal = (activeTrade.entryPrice - activeTrade.sl) * activeTrade.size;
+              balance -= lossVal;
+              totalLossValue += lossVal;
+              lossTrades++;
+              simulatedTradesList.push({
+                type: 'BUY',
+                entryPrice: activeTrade.entryPrice,
+                exitPrice: activeTrade.sl,
+                profit: -lossVal,
+                result: 'LOSS',
+                time: new Date(candle.time * 1000).toISOString()
+              });
+              activeTrade = null;
+            } else if (candle.high >= activeTrade.tp) {
+              const winVal = (activeTrade.tp - activeTrade.entryPrice) * activeTrade.size;
+              balance += winVal;
+              totalWinProfit += winVal;
+              winTrades++;
+              simulatedTradesList.push({
+                type: 'BUY',
+                entryPrice: activeTrade.entryPrice,
+                exitPrice: activeTrade.tp,
+                profit: winVal,
+                result: 'WIN',
+                time: new Date(candle.time * 1000).toISOString()
+              });
+              activeTrade = null;
+            }
+          } else {
+            if (candle.high >= activeTrade.sl) {
+              const lossVal = (activeTrade.sl - activeTrade.entryPrice) * activeTrade.size;
+              balance -= lossVal;
+              totalLossValue += lossVal;
+              lossTrades++;
+              simulatedTradesList.push({
+                type: 'SELL',
+                entryPrice: activeTrade.entryPrice,
+                exitPrice: activeTrade.sl,
+                profit: -lossVal,
+                result: 'LOSS',
+                time: new Date(candle.time * 1000).toISOString()
+              });
+              activeTrade = null;
+            } else if (candle.low <= activeTrade.tp) {
+              const winVal = (activeTrade.entryPrice - activeTrade.tp) * activeTrade.size;
+              balance += winVal;
+              totalWinProfit += winVal;
+              winTrades++;
+              simulatedTradesList.push({
+                type: 'SELL',
+                entryPrice: activeTrade.entryPrice,
+                exitPrice: activeTrade.tp,
+                profit: winVal,
+                result: 'WIN',
+                time: new Date(candle.time * 1000).toISOString()
+              });
+              activeTrade = null;
+            }
+          }
+
+          if (balance > peakBalance) peakBalance = balance;
+          const dd = ((peakBalance - balance) / peakBalance) * 100;
+          if (dd > maxDrawdown) maxDrawdown = dd;
+
+          continue;
+        }
+
+        const maFast = getSMA(data, i, 10);
+        const maSlow = getSMA(data, i, 20);
+        const maFastPrev = getSMA(data, i - 1, 10);
+        const maSlowPrev = getSMA(data, i - 1, 20);
+        const rsiVal = getRSI(data, i, 14);
+
+        let buySignal = false;
+        let sellSignal = false;
+
+        if (maCrossoverActive && rsiFilterActive) {
+          buySignal = (maFastPrev <= maSlowPrev && maFast > maSlow) && (rsiVal < 40);
+          sellSignal = (maFastPrev >= maSlowPrev && maFast < maSlow) && (rsiVal > 60);
+        } else if (maCrossoverActive) {
+          buySignal = (maFastPrev <= maSlowPrev && maFast > maSlow);
+          sellSignal = (maFastPrev >= maSlowPrev && maFast < maSlow);
+        } else if (rsiFilterActive) {
+          buySignal = (rsiVal < 30);
+          sellSignal = (rsiVal > 70);
+        }
+
+        if (buySignal || sellSignal) {
+          const entryPrice = candle.close;
+          const pipSize = pair === 'USD/JPY' ? 0.01 : 0.0001;
+          const slDistance = 30 * pipSize;
+          const sl = buySignal ? (entryPrice - slDistance) : (entryPrice + slDistance);
+          const tp = buySignal ? (entryPrice + slDistance * rrRatio) : (entryPrice - slDistance * rrRatio);
+          
+          const riskAmount = balance * (riskPct / 100);
+          const lotSize = riskAmount / (30 * 10);
+          const size = lotSize * 100000;
+
+          activeTrade = {
+            type: buySignal ? 'BUY' : 'SELL',
+            entryPrice,
+            sl,
+            tp,
+            size
+          };
+          totalTrades++;
+        }
+      }
+
+      set({ backtestProgress: 85 });
+      store.addLog('[Backtester] Menyusun laporan statistik drawdown & win rate...', 'INFO');
+
+      netProfit = balance - 10000;
+      const winRate = totalTrades > 0 ? parseFloat(((winTrades / totalTrades) * 100).toFixed(1)) : 0;
+      const profitFactor = totalLossValue > 0 ? parseFloat((totalWinProfit / totalLossValue).toFixed(2)) : 1.0;
+
+      const finalResult = {
+        netProfit: parseFloat(netProfit.toFixed(2)),
+        profitFactor,
+        maxDrawdown: parseFloat(maxDrawdown.toFixed(2)),
+        winRate,
+        totalTrades,
+        trades: simulatedTradesList
+      };
+
+      set({
+        backtestStatus: 'COMPLETED',
+        backtestProgress: 100,
+        backtestResult: finalResult
+      });
+
+      store.addLog(`[Backtester] Simulasi SELESAI. Total trade: ${totalTrades}, Win Rate: ${winRate}%, Profit Factor: ${profitFactor}. Menyimpan hasil...`, 'SUCCESS');
+      store.saveBacktestResult(`AI Strategy (MA/RSI) on ${pair}`, store.strategyParams, finalResult);
+
+    } catch (err: any) {
+      console.error('Backtest error:', err);
+      store.addLog(`[Backtester] Gagal menjalankan simulasi: ${err.message}`, 'ERROR');
+      set({ backtestStatus: 'IDLE', backtestProgress: 0 });
+    }
   },
 
   resetBacktest: () => set({

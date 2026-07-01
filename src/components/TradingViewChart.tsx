@@ -97,7 +97,10 @@ export default function TradingViewChart() {
   useEffect(() => {
     if (!seriesRef.current) return;
     const data = chartData[selectedPair] || [];
-    seriesRef.current.setData(data as any);
+    if (data.length > 0) {
+      const lastBar = data[data.length - 1];
+      seriesRef.current.update(lastBar as any);
+    }
 
     // Apply Buy/Sell markers based on trades
     const markers: any[] = [];
