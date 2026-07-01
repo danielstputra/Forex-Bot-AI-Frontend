@@ -354,6 +354,22 @@ export const useBotStore = create<BotState>((set, get) => ({
     }
   },
 
+  fetchHistoricalData: async (pair: string) => {
+    try {
+      const response = await fetch(`${getApiUrl()}/market-data/history?pair=${pair}`, {
+        headers: getHeaders()
+      });
+      if (response.ok) {
+        const result = await response.json();
+        if (result && Array.isArray(result.data)) {
+          get().setChartData(pair, result.data);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch historical data:', err);
+    }
+  },
+
   initSession: async () => {
     const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
     if (!token) return;
