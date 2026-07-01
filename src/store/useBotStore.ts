@@ -43,6 +43,8 @@ interface BotState {
   theme: 'dark' | 'light';
   setTheme: (theme: 'dark' | 'light') => void;
 
+  fetchHistoricalData: (pair: string) => Promise<void>;
+
   // SaaS Actions
   login: (email: string, password: string) => Promise<any>;
   faceIdLogin: (email: string) => Promise<any>;
