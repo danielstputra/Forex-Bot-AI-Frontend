@@ -226,12 +226,12 @@ export default function DeveloperPortal() {
                   {apiKeys.map((k) => (
                     <tr key={k.id} className="hover:bg-slate-955/20 transition-colors duration-250">
                       <td className="py-3 px-4 font-bold text-slate-200">{k.name}</td>
-                      <td className="py-3 px-4 text-slate-455 tracking-wider font-mono">{k.keyHash?.substring(0, 15)}...</td>
+                      <td className="py-3 px-4 text-slate-455 tracking-wider font-mono">{k.key}</td>
                       <td className="py-3 px-4">
                         <span className={`px-2 py-0.5 text-[9px] font-bold rounded ${
-                          k.permissions.includes('TRADE') ? 'bg-purple-950 text-purple-400' : 'bg-slate-955 text-slate-500'
+                          k.permission === 'Trade Execution' ? 'bg-purple-950 text-purple-400' : 'bg-slate-955 text-slate-500'
                         }`}>
-                          {k.permissions}
+                          {k.permission}
                         </span>
                       </td>
                       <td className="py-3 px-4 text-right">
