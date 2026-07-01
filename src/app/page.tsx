@@ -91,23 +91,19 @@ export default function Home() {
       <ProductTour />
 
       {/* Sidebar - Navigation */}
-      <div id="tour-sidebar">
-        <Sidebar 
-          activeTab={activeTab} 
-          setActiveTab={setActiveTab} 
-          isOpen={isSidebarOpen}
-          onClose={() => setIsSidebarOpen(false)}
-          isCollapsed={isSidebarCollapsed}
-          onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-        />
-      </div>
+      <Sidebar 
+        activeTab={activeTab} 
+        setActiveTab={setActiveTab} 
+        isOpen={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
+        isCollapsed={isSidebarCollapsed}
+        onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+      />
 
       {/* Main Container */}
       <div className="flex-1 flex flex-col h-full overflow-hidden bg-background">
         {/* Header - Account & Quick Controls */}
-        <div id="tour-header">
-          <Header onMenuClick={() => setIsSidebarOpen(true)} onProfileClick={() => setActiveTab('profile')} />
-        </div>
+        <Header onMenuClick={() => setIsSidebarOpen(true)} onProfileClick={() => setActiveTab('profile')} />
 
         {/* Dynamic Page Content */}
         <main className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6 xl:p-8 space-y-4 sm:space-y-6">
@@ -131,14 +127,10 @@ export default function Home() {
               {/* Right 1/3 - Control Panel & AI Thoughts */}
               <div className="space-y-6">
                 {/* Bot Settings & Risk Control */}
-                <div id="tour-control">
-                  <BotControlPanel />
-                </div>
+                <BotControlPanel />
 
                 {/* AI Console Feed */}
-                <div id="tour-console">
-                  <AiConsole />
-                </div>
+                <AiConsole />
               </div>
             </div>
           )}

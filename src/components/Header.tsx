@@ -34,7 +34,7 @@ export default function Header({ onMenuClick, onProfileClick }: HeaderProps) {
     new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val);
 
   return (
-    <header className="w-full h-16 sm:h-20 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 px-3 sm:px-5 lg:px-8 flex items-center gap-2 sm:gap-4 z-20 overflow-hidden">
+    <header id="tour-header" className="w-full h-16 sm:h-20 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 px-3 sm:px-5 lg:px-8 flex items-center gap-2 sm:gap-4 z-20 overflow-hidden">
 
       {/* Hamburger – mobile only */}
       <button

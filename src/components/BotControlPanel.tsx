@@ -76,7 +76,7 @@ export default function BotControlPanel() {
   };
 
   return (
-    <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 flex flex-col gap-6 shadow-xl">
+    <div id="tour-control" className="bg-slate-900 border border-slate-800 rounded-3xl p-6 flex flex-col gap-6 shadow-xl">
       <div>
         <h3 className="text-sm font-semibold text-slate-100 uppercase tracking-wider mb-1 font-mono">
           {t('control.title')}

@@ -22,7 +22,7 @@ export default function AiConsole() {
   };
 
   return (
-    <div className="bg-slate-955 border border-slate-850 rounded-3xl p-6 flex flex-col h-full shadow-xl">
+    <div id="tour-console" className="bg-slate-955 border border-slate-850 rounded-3xl p-6 flex flex-col h-full shadow-xl">
       {/* Console Header */}
       <div className="flex items-center justify-between pb-4 border-b border-slate-850 mb-4">
         <div className="flex items-center gap-2.5 text-slate-200">

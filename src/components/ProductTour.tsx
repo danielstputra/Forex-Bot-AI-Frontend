@@ -14,6 +14,8 @@ export default function ProductTour() {
   const [isActive, setIsActive] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [coords, setCoords] = useState<{ top: number; left: number; width: number; height: number } | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
+  const [isElementVisible, setIsElementVisible] = useState(true);
 
   const steps: TourStep[] = [
     {
@@ -43,6 +45,16 @@ export default function ProductTour() {
   ];
 
   useEffect(() => {
+    // Detect mobile viewport size
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  useEffect(() => {
     // Show tour if not completed before
     const completed = localStorage.getItem('forex_bot_tour_completed');
     if (!completed) {
@@ -66,6 +78,10 @@ export default function ProductTour() {
       const el = document.getElementById(step.targetId);
       if (el) {
         const rect = el.getBoundingClientRect();
+        // Check if element is visually displayed with width/height, and is not completely offscreen
+        const visible = rect.width > 0 && rect.height > 0 && rect.left >= 0 && rect.top >= 0 && rect.left < window.innerWidth && rect.top < window.innerHeight;
+        
+        setIsElementVisible(visible);
         setCoords({
           top: rect.top,
           left: rect.left,
@@ -73,8 +89,12 @@ export default function ProductTour() {
           height: rect.height
         });
         
-        // Scroll element into view smoothly if needed
-        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // Scroll element into view smoothly if needed and visible
+        if (visible) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      } else {
+        setIsElementVisible(false);
       }
     };
 
@@ -102,37 +122,68 @@ export default function ProductTour() {
     localStorage.setItem('forex_bot_tour_completed', 'true');
   };
 
-  if (!isActive || !coords) return null;
+  if (!isActive) return null;
 
   const step = steps[currentStep];
+  const showCutout = !isMobile && isElementVisible && coords;
 
   // Calculate popover positioning
-  const getPopoverStyle = () => {
+  const getPopoverStyle = (): React.CSSProperties => {
+    if (isMobile || !isElementVisible || !coords) {
+      return {
+        position: 'fixed',
+        bottom: '24px',
+        left: '50%',
+        transform: 'translateX(-50%)',
+        width: 'calc(100vw - 32px)',
+        maxWidth: '340px',
+        top: 'auto',
+        zIndex: 50,
+      };
+    }
+
     const spacing = 12;
     const popWidth = 280;
     
+    let top = 0;
+    let left = 0;
+
     if (step.position === 'bottom') {
-      return {
-        top: `${coords.top + coords.height + spacing}px`,
-        left: `${coords.left + coords.width / 2 - popWidth / 2}px`
-      };
+      top = coords.top + coords.height + spacing;
+      left = coords.left + coords.width / 2 - popWidth / 2;
+    } else if (step.position === 'top') {
+      top = coords.top - 160 - spacing; // Est height
+      left = coords.left + coords.width / 2 - popWidth / 2;
+    } else if (step.position === 'left') {
+      top = coords.top + coords.height / 2 - 80;
+      left = coords.left - popWidth - spacing;
+    } else {
+      // Right
+      top = coords.top + coords.height / 2 - 80;
+      left = coords.left + coords.width + spacing;
     }
-    if (step.position === 'top') {
-      return {
-        top: `${coords.top - 160 - spacing}px`, // Est height
-        left: `${coords.left + coords.width / 2 - popWidth / 2}px`
-      };
+
+    // Boundary constraints check for desktop to prevent offscreen overflow
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+
+    if (left < spacing) {
+      left = spacing;
+    } else if (left + popWidth > viewportWidth - spacing) {
+      left = viewportWidth - popWidth - spacing;
     }
-    if (step.position === 'left') {
-      return {
-        top: `${coords.top + coords.height / 2 - 80}px`,
-        left: `${coords.left - popWidth - spacing}px`
-      };
+
+    // Simple height check (approximate card height as 180px)
+    const estCardHeight = 180;
+    if (top < spacing) {
+      top = spacing;
+    } else if (top + estCardHeight > viewportHeight - spacing) {
+      top = viewportHeight - estCardHeight - spacing;
     }
-    // Right
+
     return {
-      top: `${coords.top + coords.height / 2 - 80}px`,
-      left: `${coords.left + coords.width + spacing}px`
+      top: `${top}px`,
+      left: `${left}px`
     };
   };
 
@@ -142,7 +193,7 @@ export default function ProductTour() {
       <div 
         className="absolute inset-0 bg-slate-955/75 transition-all duration-300 pointer-events-auto"
         style={{
-          clipPath: `polygon(
+          clipPath: showCutout && coords ? `polygon(
             0% 0%, 
             0% 100%, 
             ${coords.left}px 100%, 
@@ -153,24 +204,26 @@ export default function ProductTour() {
             ${coords.left}px 100%, 
             100% 100%, 
             100% 0%
-          )`
+          )` : 'none'
         }}
       />
 
       {/* Highlight border */}
-      <div 
-        className="absolute border-2 border-cyan-500 rounded-2xl transition-all duration-300 shadow-[0_0_15px_rgba(6,182,212,0.5)]"
-        style={{
-          top: `${coords.top - 4}px`,
-          left: `${coords.left - 4}px`,
-          width: `${coords.width + 8}px`,
-          height: `${coords.height + 8}px`,
-        }}
-      />
+      {showCutout && coords && (
+        <div 
+          className="absolute border-2 border-cyan-500 rounded-2xl transition-all duration-300 shadow-[0_0_15px_rgba(6,182,212,0.5)]"
+          style={{
+            top: `${coords.top - 4}px`,
+            left: `${coords.left - 4}px`,
+            width: `${coords.width + 8}px`,
+            height: `${coords.height + 8}px`,
+          }}
+        />
+      )}
 
       {/* Popover Card */}
       <div 
-        className="absolute bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-2xl z-50 pointer-events-auto max-w-[280px] w-full space-y-4 animate-scale-up"
+        className="absolute bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-2xl z-50 pointer-events-auto max-w-[340px] w-full space-y-4 animate-scale-up"
         style={getPopoverStyle()}
       >
         {/* Close */}
