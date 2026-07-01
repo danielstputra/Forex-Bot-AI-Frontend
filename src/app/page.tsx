@@ -110,9 +110,9 @@ export default function Home() {
         </div>
 
         {/* Dynamic Page Content */}
-        <main className="flex-1 overflow-y-auto p-8 space-y-6">
+        <main className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6 xl:p-8 space-y-4 sm:space-y-6">
           {activeTab === 'dashboard' && (
-            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 items-start">
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 sm:gap-6 items-start">
               {/* Left 2/3 - Chart & Positions */}
               <div className="xl:col-span-2 space-y-6">
                 {/* Real-time Candlestick Chart */}

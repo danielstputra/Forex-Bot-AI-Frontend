@@ -64,7 +64,7 @@ export default function Sidebar({
           onClick={onClose}
         />
       )}
-      <aside className={`fixed inset-y-0 left-0 lg:static bg-slate-900 border-r border-slate-800 flex flex-col h-full z-50 shrink-0 transition-all duration-300 ${
+      <aside className={`fixed inset-y-0 left-0 lg:static bg-slate-900 border-r border-slate-800 flex flex-col h-full z-50 shrink-0 transition-all duration-300 w-72 sm:w-72 ${
         isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
       } ${isCollapsed ? 'lg:w-20' : 'lg:w-64'}`}>
       
