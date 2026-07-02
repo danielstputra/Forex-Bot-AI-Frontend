@@ -38,7 +38,7 @@ export default function AuditTrailView() {
       ['Report Date:', new Date().toLocaleString()],
       ['Total Logged Actions:', displayLogs.length.toString()],
       [],
-      ['LOG ID', 'TIMESTAMP (LOCAL TIME)', 'ACTION / EVENT PERFORMED', 'IP ADDRESS', 'STATUS']
+      [t('audit.colId'), t('audit.colTimestamp'), t('audit.colAction'), t('audit.colIp'), t('audit.colStatus')]
     ];
 
     // 2. Map audit logs to rows
@@ -91,18 +91,18 @@ export default function AuditTrailView() {
         <div>
           <h2 className="text-xl font-bold text-slate-100 font-mono flex items-center gap-2.5">
             <Shield className="w-6 h-6 text-cyan-400" />
-            Audit Trail & Kepatuhan Regulasi
+            {t('audit.title')}
           </h2>
           <p className="text-xs text-slate-400 mt-1">
-            Rekaman catatan aktivitas sistem (*activity log*) yang tidak dapat diubah untuk audit keamanan BAPPEBTI/otoritas global.
+            {t('audit.desc')}
           </p>
         </div>
         <button
           onClick={handleExportAuditExcel}
-          className="px-4 py-2 bg-slate-900 hover:bg-slate-850 text-slate-200 hover:text-cyan-450 border border-slate-800 rounded-xl text-xs font-bold font-mono transition-all duration-300 flex items-center gap-1.5 active:scale-95 shadow-md"
+          className="px-4 py-2 bg-slate-900 hover:bg-slate-850 text-slate-200 hover:text-cyan-455 border border-slate-800 rounded-xl text-xs font-bold font-mono transition-all duration-300 flex items-center gap-1.5 active:scale-95 shadow-md"
         >
           <Download className="w-4 h-4" />
-          Ekspor Log Audit (.xlsx)
+          {t('audit.export')}
         </button>
       </div>
 
@@ -112,11 +112,11 @@ export default function AuditTrailView() {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-slate-850 text-[10px] font-mono text-slate-550 uppercase tracking-wider">
-                <th className="py-3 px-4 font-normal">Log ID</th>
-                <th className="py-3 px-4 font-normal">Timestamp (Lokal)</th>
-                <th className="py-3 px-4 font-normal">Aksi / Aktivitas</th>
-                <th className="py-3 px-4 font-normal">Alamat IP</th>
-                <th className="py-3 px-4 text-right font-normal">Status</th>
+                <th className="py-3 px-4 font-normal">{t('audit.colId')}</th>
+                <th className="py-3 px-4 font-normal">{t('audit.colTimestamp')}</th>
+                <th className="py-3 px-4 font-normal">{t('audit.colAction')}</th>
+                <th className="py-3 px-4 font-normal">{t('audit.colIp')}</th>
+                <th className="py-3 px-4 text-right font-normal">{t('audit.colStatus')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-850/40 text-xs font-mono text-slate-350">
@@ -140,7 +140,7 @@ export default function AuditTrailView() {
               {displayLogs.length === 0 && (
                 <tr>
                   <td colSpan={5} className="py-8 text-center text-slate-500">
-                    Belum ada log audit tercatat.
+                    {t('audit.empty')}
                   </td>
                 </tr>
               )}
@@ -151,4 +151,3 @@ export default function AuditTrailView() {
     </div>
   );
 }
-
