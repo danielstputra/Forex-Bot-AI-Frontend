@@ -27,6 +27,7 @@ import EconomicCalendar from '@/components/EconomicCalendar';
 import PammDashboard from '@/components/PammDashboard';
 import DeveloperPortal from '@/components/DeveloperPortal';
 import InboxView from '@/components/InboxView';
+import ToastContainer from '@/components/ToastContainer';
 import { useSessionTimeout } from '@/hooks/useSessionTimeout';
 import { mockSocketService } from '@/services/mockSocket';
 import { useBotStore } from '@/store/useBotStore';
@@ -73,7 +74,7 @@ export default function Home() {
     };
   }, [user]);
 
-  // Session Timeout Hook (30s inactivity timeout + 15s warning countdown)
+  // Manage Session Inactivity Timeout
   const { showWarning, countdown, resetTimeout } = useSessionTimeout(30000, 15);
 
   // If user is not authenticated, show the login screen
@@ -84,6 +85,9 @@ export default function Home() {
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-background text-foreground font-sans selection:bg-cyan-500/30">
       
+      {/* Dynamic Toast Notifications */}
+      <ToastContainer />
+
       {/* PWA & Network Monitor Fallback */}
       <OfflineFallback />
 

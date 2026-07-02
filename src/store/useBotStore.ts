@@ -75,6 +75,11 @@ interface BotState {
   addNotification: (message: string) => void;
   markAllAsRead: () => void;
 
+  // Custom Toast State & Actions
+  toasts: Array<{ id: string; message: string; type: 'success' | 'error' | 'info' }>;
+  addToast: (message: string, type?: 'success' | 'error' | 'info') => void;
+  removeToast: (id: string) => void;
+
   // Audit Trail & B2B White-Labeling
   auditLogs: Array<{ id: string; timestamp: string; action: string; ipAddress: string; status: string }>;
   addAuditLog: (action: string, status?: string) => void;
@@ -326,6 +331,7 @@ export const useBotStore = create<BotState>((set, get) => ({
   selectedPair: 'EUR/USD',
   user: null,
   notifications: [],
+  toasts: [],
   auditLogs: [
     {
       id: 'AUD-101',
@@ -392,6 +398,7 @@ export const useBotStore = create<BotState>((set, get) => ({
             twoFactorOn: profile.twoFactorOn
           },
           kycStatus: profile.kycStatus,
+          status: profile.botConfig?.isActive ? 'RUNNING' : 'IDLE',
           config: {
             riskLevel: profile.botConfig?.riskTolerance >= 3.0 ? 'AGGRESSIVE' : (profile.botConfig?.riskTolerance <= 1.0 ? 'CONSERVATIVE' : 'MODERATE'),
             tradeSize: profile.botConfig?.lotMultiplier || 0.1,
@@ -420,17 +427,19 @@ export const useBotStore = create<BotState>((set, get) => ({
     if (status === 'RUNNING' && currentStore.user) {
       if (currentStore.user.tier === 'FREE' && currentStore.selectedPair !== 'EUR/USD') {
         success = false;
+        const errMsg = `[Paywall] Gagal memulai: Fitur Multi-Pair terkunci pada paket FREE.`;
         set((state) => ({
           logs: [
             {
               id: `L-${Date.now()}`,
               timestamp: new Date().toISOString(),
-              message: `[Paywall] Gagal memulai: Fitur Multi-Pair terkunci pada paket FREE.`,
+              message: errMsg,
               level: 'ERROR',
             },
             ...state.logs
           ]
         }));
+        get().addNotification(errMsg);
       }
     }
 
@@ -440,8 +449,16 @@ export const useBotStore = create<BotState>((set, get) => ({
     }
 
     try {
-      const endpoint = status === 'RUNNING' ? 'start' : 'stop';
-      const response = await fetch(`${getApiUrl()}/trading/bot/${endpoint}`, {
+      // Petakan setiap status ke endpoint yang benar:
+      // RUNNING → /bot/start
+      // PAUSED  → /bot/pause  (hentikan eksekusi baru TANPA menutup posisi aktif)
+      // IDLE    → /bot/stop   (hentikan bot DAN tutup semua posisi)
+      const endpoint =
+        status === 'RUNNING' ? 'start' :
+        status === 'PAUSED'  ? 'pause' :
+                               'stop';
+
+      const response = await fetch(`${API_BASE_URL}/trading/bot/${endpoint}`, {
         method: 'POST',
         headers: getHeaders()
       });
@@ -449,16 +466,21 @@ export const useBotStore = create<BotState>((set, get) => ({
       if (response.ok) {
         set({ status });
         get().addAuditLog(`Bot Status Updated to ${status}`);
+        get().addNotification(`Bot berhasil diubah statusnya menjadi ${status}.`);
         
         if (status === 'IDLE') {
           // If stopped, clear active trades locally
           set({ activeTrades: [] });
         }
       } else {
-        console.error('Failed to update bot status on server');
+        const errorData = await response.json().catch(() => ({}));
+        const errMsg = errorData.message || `Gagal mengubah status bot menjadi ${status} di server.`;
+        console.error('Failed to update bot status on server:', errMsg);
+        get().addNotification(errMsg);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error updating bot status:', err);
+      get().addNotification(err.message || `Koneksi gagal saat mengubah status bot menjadi ${status}.`);
     }
   },
   
@@ -469,7 +491,7 @@ export const useBotStore = create<BotState>((set, get) => ({
 
     try {
       const riskTolerance = newConfig.riskLevel === 'AGGRESSIVE' ? 3.0 : (newConfig.riskLevel === 'CONSERVATIVE' ? 1.0 : 2.0);
-      await fetch(`${getApiUrl()}/trading/config`, {
+      const response = await fetch(`${getApiUrl()}/trading/config`, {
         method: 'POST',
         headers: getHeaders(),
         body: JSON.stringify({
@@ -478,9 +500,16 @@ export const useBotStore = create<BotState>((set, get) => ({
           maxDrawdown: newConfig.maxDrawdown
         })
       });
-      get().addAuditLog('Bot Configuration Updated');
-    } catch (err) {
+      if (response.ok) {
+        get().addAuditLog('Bot Configuration Updated');
+        get().addNotification('Konfigurasi bot berhasil disimpan.');
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        get().addNotification(errorData.message || 'Gagal menyimpan konfigurasi bot di server.');
+      }
+    } catch (err: any) {
       console.error('Failed to sync bot config to server:', err);
+      get().addNotification(err.message || 'Koneksi gagal saat memperbarui konfigurasi bot.');
     }
   },
   
@@ -1270,16 +1299,42 @@ export const useBotStore = create<BotState>((set, get) => ({
     backtestResult: null
   }),
 
-  addNotification: (message) => set((state) => ({
-    notifications: [
-      {
-        id: `N-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
-        message,
-        read: false,
-        timestamp: new Date().toISOString(),
-      },
-      ...state.notifications
-    ].slice(0, 50)
+  addNotification: (message) => {
+    // Tentukan jenis toast berdasarkan kata kunci error/gagal/ditolak
+    const isError = message.toLowerCase().includes('gagal') ||
+                    message.toLowerCase().includes('failed') ||
+                    message.toLowerCase().includes('error') ||
+                    message.toLowerCase().includes('ditolak') ||
+                    message.toLowerCase().includes('rejected');
+    const type = isError ? 'error' : 'success';
+    get().addToast(message, type);
+
+    set((state) => ({
+      notifications: [
+        {
+          id: `N-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+          message,
+          read: false,
+          timestamp: new Date().toISOString(),
+        },
+        ...state.notifications
+      ].slice(0, 50)
+    }));
+  },
+
+  addToast: (message, type = 'info') => set((state) => {
+    const id = `toast-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`;
+    // Auto-remove toast setelah 4 detik
+    setTimeout(() => {
+      get().removeToast(id);
+    }, 4000);
+    return {
+      toasts: [...state.toasts, { id, message, type }]
+    };
+  }),
+
+  removeToast: (id) => set((state) => ({
+    toasts: state.toasts.filter(t => t.id !== id)
   })),
 
   markAllAsRead: () => set((state) => ({

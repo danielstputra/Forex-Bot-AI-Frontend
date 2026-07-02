@@ -1,14 +1,17 @@
 'use client';
 
 import React, { useEffect, useRef } from 'react';
-import { createChart, ColorType, CandlestickSeries, ISeriesApi, createSeriesMarkers } from 'lightweight-charts';
+import { createChart, ColorType, CandlestickSeries, ISeriesApi, createSeriesMarkers, IChartApi } from 'lightweight-charts';
 import { useBotStore } from '../store/useBotStore';
 import { ShieldAlert } from 'lucide-react';
 
 export default function TradingViewChart() {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const { chartData, selectedPair, activeTrades, tradeHistory, newsSentiments, fetchNewsSentiments, theme } = useBotStore();
+  const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
+  const seriesPairRef = useRef<string | null>(null);
+  const lastDataLengthRef = useRef<number>(0);
 
   useEffect(() => {
     fetchNewsSentiments();
@@ -67,11 +70,14 @@ export default function TradingViewChart() {
       wickDownColor: '#ef4444',
     });
 
+    chartRef.current = chart;
     seriesRef.current = candlestickSeries;
+    seriesPairRef.current = selectedPair;
 
     // Initial data load
     const data = chartData[selectedPair] || [];
     candlestickSeries.setData(data as any);
+    lastDataLengthRef.current = data.length;
 
     // Fit content
     if (data.length > 0) {
@@ -90,16 +96,43 @@ export default function TradingViewChart() {
     return () => {
       window.removeEventListener('resize', handleResize);
       chart.remove();
+      chartRef.current = null;
+      seriesRef.current = null;
+      seriesPairRef.current = null;
+      lastDataLengthRef.current = 0;
     };
   }, [selectedPair, theme]); // Recreate chart if pair or theme changes
 
   // Update chart data when new ticks arrive
   useEffect(() => {
-    if (!seriesRef.current) return;
+    if (!seriesRef.current || seriesPairRef.current !== selectedPair) return;
     const data = chartData[selectedPair] || [];
-    if (data.length > 0) {
+    if (data.length === 0) {
+      lastDataLengthRef.current = 0;
+      return;
+    }
+
+    const prevLength = lastDataLengthRef.current;
+    lastDataLengthRef.current = data.length;
+
+    // If data just loaded (e.g., transition from 0 or small length to a large historical dataset)
+    if (prevLength < 10 && data.length >= 10) {
+      try {
+        seriesRef.current.setData(data as any);
+        if (chartRef.current) {
+          chartRef.current.timeScale().fitContent();
+        }
+      } catch (err) {
+        console.warn('Failed to set initial historical data on chart:', err);
+      }
+    } else {
+      // Normal tick update (either appending a new bar or updating the last bar)
       const lastBar = data[data.length - 1];
-      seriesRef.current.update(lastBar as any);
+      try {
+        seriesRef.current.update(lastBar as any);
+      } catch (err) {
+        console.warn('Failed to update chart tick:', err);
+      }
     }
 
     // Apply Buy/Sell markers based on trades
@@ -136,7 +169,11 @@ export default function TradingViewChart() {
 
     // Sort markers by time
     markers.sort((a, b) => (a.time as number) - (b.time as number));
-    createSeriesMarkers(seriesRef.current, markers);
+    try {
+      createSeriesMarkers(seriesRef.current, markers);
+    } catch (err) {
+      console.warn('Failed to set series markers:', err);
+    }
 
   }, [chartData, selectedPair, activeTrades, tradeHistory]);
 

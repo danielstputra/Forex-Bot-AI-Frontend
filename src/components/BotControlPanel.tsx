@@ -75,6 +75,81 @@ export default function BotControlPanel() {
     }
   };
 
+  // State lokal untuk menghindari spam updateConfig ke API setiap keystroke
+  const [localTradeSize, setLocalTradeSize] = useState(config.tradeSize.toString());
+  const [localMaxDrawdown, setLocalMaxDrawdown] = useState(config.maxDrawdown.toString());
+
+  // Sinkronisasi state lokal saat config dari store berubah (hanya jika elemen tidak sedang fokus)
+  useEffect(() => {
+    if (document.activeElement !== document.getElementById('input-trade-size')) {
+      setLocalTradeSize(config.tradeSize.toString());
+    }
+  }, [config.tradeSize]);
+
+  useEffect(() => {
+    if (document.activeElement !== document.getElementById('input-max-drawdown')) {
+      setLocalMaxDrawdown(config.maxDrawdown.toString());
+    }
+  }, [config.maxDrawdown]);
+
+  // Efek debounce untuk Trade Size (tunda updateConfig 600ms sejak keystroke terakhir)
+  useEffect(() => {
+    const value = parseFloat(localTradeSize);
+    if (!isNaN(value) && value >= 0.01 && value <= 10.0 && value !== config.tradeSize) {
+      const handler = setTimeout(() => {
+        updateConfig({ tradeSize: value });
+      }, 600);
+      return () => clearTimeout(handler);
+    }
+  }, [localTradeSize, config.tradeSize, updateConfig]);
+
+  // Efek debounce untuk Max Drawdown (tunda updateConfig 600ms sejak keystroke terakhir)
+  useEffect(() => {
+    const value = parseFloat(localMaxDrawdown);
+    if (!isNaN(value) && value >= 1.0 && value <= 50.0 && value !== config.maxDrawdown) {
+      const handler = setTimeout(() => {
+        updateConfig({ maxDrawdown: value });
+      }, 600);
+      return () => clearTimeout(handler);
+    }
+  }, [localMaxDrawdown, config.maxDrawdown, updateConfig]);
+
+  const handleTradeSizeBlur = () => {
+    const value = parseFloat(localTradeSize);
+    if (!isNaN(value) && value >= 0.01 && value <= 10.0) {
+      if (value !== config.tradeSize) {
+        updateConfig({ tradeSize: value });
+      }
+    } else {
+      // Rollback jika input tidak valid
+      setLocalTradeSize(config.tradeSize.toString());
+    }
+  };
+
+  const handleMaxDrawdownBlur = () => {
+    const value = parseFloat(localMaxDrawdown);
+    if (!isNaN(value) && value >= 1.0 && value <= 50.0) {
+      if (value !== config.maxDrawdown) {
+        updateConfig({ maxDrawdown: value });
+      }
+    } else {
+      // Rollback jika input tidak valid
+      setLocalMaxDrawdown(config.maxDrawdown.toString());
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent, type: 'size' | 'drawdown') => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (type === 'size') {
+        handleTradeSizeBlur();
+      } else {
+        handleMaxDrawdownBlur();
+      }
+      (e.target as HTMLInputElement).blur();
+    }
+  };
+
   return (
     <div id="tour-control" className="bg-slate-900 border border-slate-800 rounded-3xl p-6 flex flex-col gap-6 shadow-xl">
       <div>
@@ -195,12 +270,15 @@ export default function BotControlPanel() {
         <div className="space-y-2">
           <label className="text-xs text-slate-400 font-mono">{t('control.tradeSize')}</label>
           <input
+            id="input-trade-size"
             type="number"
             step="0.01"
             min="0.01"
             max="10.0"
-            value={config.tradeSize}
-            onChange={(e) => updateConfig({ tradeSize: parseFloat(e.target.value) || 0.01 })}
+            value={localTradeSize}
+            onChange={(e) => setLocalTradeSize(e.target.value)}
+            onBlur={handleTradeSizeBlur}
+            onKeyDown={(e) => handleKeyDown(e, 'size')}
             className="w-full bg-slate-950 border border-slate-850 rounded-xl px-3 py-2 text-slate-200 font-mono text-xs focus:outline-none focus:border-cyan-500"
           />
         </div>
@@ -209,16 +287,20 @@ export default function BotControlPanel() {
         <div className="space-y-2">
           <label className="text-xs text-slate-400 font-mono">{t('control.maxDrawdown')}</label>
           <input
+            id="input-max-drawdown"
             type="number"
             step="0.5"
             min="1.0"
             max="50.0"
-            value={config.maxDrawdown}
-            onChange={(e) => updateConfig({ maxDrawdown: parseFloat(e.target.value) || 5.0 })}
+            value={localMaxDrawdown}
+            onChange={(e) => setLocalMaxDrawdown(e.target.value)}
+            onBlur={handleMaxDrawdownBlur}
+            onKeyDown={(e) => handleKeyDown(e, 'drawdown')}
             className="w-full bg-slate-950 border border-slate-850 rounded-xl px-3 py-2 text-slate-200 font-mono text-xs focus:outline-none focus:border-cyan-500"
           />
         </div>
       </div>
+
 
       {/* Warning Alert if Status is Panic */}
       {status === 'PANIC' && (
