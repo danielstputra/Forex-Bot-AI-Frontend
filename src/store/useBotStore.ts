@@ -104,6 +104,7 @@ interface BotState {
   deployVps: (planName: string, region: string) => Promise<void>;
   fetchBrokerAccounts: () => Promise<void>;
   linkBrokerAccount: (data: { brokerName: string; accountNumber: string; passwordCipher: string; serverAddress: string; leverage: number }) => Promise<void>;
+  disconnectBrokerAccount: (accountId: string) => Promise<void>;
   fetchAdminFinancialQueue: () => Promise<void>;
   approveAdminDeposit: (id: string) => Promise<void>;
   rejectAdminDeposit: (id: string) => Promise<void>;
@@ -1517,6 +1518,40 @@ export const useBotStore = create<BotState>((set, get) => ({
     } catch (err) {
       console.error('Broker linking failed:', err);
       throw err;
+    }
+  },
+
+  disconnectBrokerAccount: async (accountId) => {
+    try {
+      const response = await fetch(`${getApiUrl()}/broker/${accountId}`, {
+        method: 'DELETE',
+        headers: getHeaders()
+      });
+      if (response.ok) {
+        get().addNotification('Akun broker berhasil diputuskan.');
+        get().addAuditLog(`Broker Disconnected (ID: ${accountId})`);
+        
+        // Reset stats if there are no remaining accounts
+        const remainingAccounts = get().brokerAccounts.filter(acc => acc.id !== accountId);
+        if (remainingAccounts.length === 0) {
+          set((state) => ({
+            stats: {
+              ...state.stats,
+              balance: 10000.00,
+              equity: 10000.00
+            }
+          }));
+        }
+        
+        get().fetchBrokerAccounts();
+        get().addToast('Akun broker berhasil diputuskan.', 'success');
+      } else {
+        const errData = await response.json().catch(() => ({}));
+        get().addToast(errData.message || 'Gagal memutuskan akun broker.', 'error');
+      }
+    } catch (err: any) {
+      console.error('Failed to disconnect broker account:', err);
+      get().addToast(err.message || 'Koneksi gagal saat memutuskan akun broker.', 'error');
     }
   },
 

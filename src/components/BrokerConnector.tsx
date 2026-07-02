@@ -2,16 +2,19 @@
 
 import React, { useState, useEffect } from 'react';
 import { useBotStore } from '../store/useBotStore';
+import { useI18nStore } from '../store/useI18nStore';
 import { Shield, Link, Unlink, RefreshCw, Layers, Clock, CheckCircle2, XCircle } from 'lucide-react';
 
 export default function BrokerConnector() {
+  const t = useI18nStore((state) => state.t);
   const {
     brokerAccounts,
     fetchBrokerAccounts,
     linkBrokerAccount,
     brokerSyncLogs,
     fetchBrokerSyncLogs,
-    syncBrokerAccount
+    syncBrokerAccount,
+    disconnectBrokerAccount
   } = useBotStore();
 
   const [brokerName, setBrokerName] = useState('IC Markets');
@@ -49,11 +52,11 @@ export default function BrokerConnector() {
         serverAddress,
         leverage: parseInt(leverage)
       });
-      setSuccess('Broker account successfully connected!');
+      setSuccess(t('broker.successMsg'));
       setAccountNumber('');
       setPassword('');
     } catch (err: any) {
-      setError(err.message || 'Failed to connect broker account.');
+      setError(err.message || t('broker.failMsg'));
     } finally {
       setLoading(false);
     }
@@ -71,10 +74,10 @@ export default function BrokerConnector() {
       <div className="lg:col-span-1 p-6 bg-slate-900 border border-slate-800 rounded-3xl space-y-4 shadow-xl">
         <h3 className="text-sm font-bold text-slate-100 uppercase tracking-wider font-mono flex items-center gap-2">
           <Link className="text-cyan-400 h-5 w-5" />
-          Hubungkan Akun MT4 / MT5
+          {t('broker.connectTitle')}
         </h3>
         <p className="text-xs text-slate-400 leading-relaxed">
-          Hubungkan akun trading MT4 atau MT5 Anda agar bot AI dapat mengeksekusi order langsung ke broker Anda.
+          {t('broker.connectDesc')}
         </p>
 
         {error && <div className="p-3 bg-red-950/40 border border-red-900/45 text-rose-400 text-xs rounded-xl font-mono">{error}</div>}
@@ -82,7 +85,7 @@ export default function BrokerConnector() {
 
         <form onSubmit={handleLink} className="space-y-3">
           <div>
-            <label className="text-[10px] text-slate-400 uppercase font-mono block mb-1">Pilih Broker</label>
+            <label className="text-[10px] text-slate-400 uppercase font-mono block mb-1">{t('broker.selectBroker')}</label>
             <select
               value={brokerName}
               onChange={(e) => setBrokerName(e.target.value)}
@@ -95,7 +98,7 @@ export default function BrokerConnector() {
             </select>
           </div>
           <div>
-            <label className="text-[10px] text-slate-400 uppercase font-mono block mb-1">Nomor Akun (Login)</label>
+            <label className="text-[10px] text-slate-400 uppercase font-mono block mb-1">{t('broker.accountNumber')}</label>
             <input
               type="text"
               value={accountNumber}
@@ -106,7 +109,7 @@ export default function BrokerConnector() {
             />
           </div>
           <div>
-            <label className="text-[10px] text-slate-400 uppercase font-mono block mb-1">Kata Sandi Master</label>
+            <label className="text-[10px] text-slate-400 uppercase font-mono block mb-1">{t('broker.password')}</label>
             <input
               type="password"
               value={password}
@@ -117,7 +120,7 @@ export default function BrokerConnector() {
             />
           </div>
           <div>
-            <label className="text-[10px] text-slate-400 uppercase font-mono block mb-1">Alamat Server Broker</label>
+            <label className="text-[10px] text-slate-400 uppercase font-mono block mb-1">{t('broker.serverAddress')}</label>
             <input
               type="text"
               value={serverAddress}
@@ -128,7 +131,7 @@ export default function BrokerConnector() {
             />
           </div>
           <div>
-            <label className="text-[10px] text-slate-400 uppercase font-mono block mb-1">Leverage</label>
+            <label className="text-[10px] text-slate-400 uppercase font-mono block mb-1">{t('broker.leverage')}</label>
             <select
               value={leverage}
               onChange={(e) => setLeverage(e.target.value)}
@@ -136,14 +139,14 @@ export default function BrokerConnector() {
             >
               <option value="100">1:100</option>
               <option value="200">1:200</option>
-              <option value="500">1:500 (Rekomendasi)</option>
+              <option value="500">1:500 ({t('common.verified')})</option>
               <option value="1000">1:1000</option>
             </select>
           </div>
 
           <div className="flex items-center gap-2 text-[9px] text-slate-500 font-mono py-1">
             <Shield className="h-3 w-3 text-cyan-500" />
-            Sandi dienkripsi aman dengan AES-256-GCM.
+            {t('broker.encrypted')}
           </div>
 
           <button
@@ -151,7 +154,7 @@ export default function BrokerConnector() {
             disabled={loading}
             className="w-full py-3 bg-gradient-to-r from-cyan-500 to-purple-600 hover:from-cyan-600 hover:to-purple-700 disabled:opacity-50 text-white font-bold rounded-xl text-xs uppercase tracking-wider transition-all shadow-md active:scale-95"
           >
-            {loading ? 'Menghubungkan ke Broker...' : 'Hubungkan Akun'}
+            {loading ? t('broker.connecting') : t('broker.connect')}
           </button>
         </form>
       </div>
@@ -162,7 +165,7 @@ export default function BrokerConnector() {
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-bold text-slate-100 uppercase tracking-wider font-mono flex items-center gap-2">
               <Layers className="text-cyan-400 h-5 w-5" />
-              Akun Broker Terhubung
+              {t('broker.connectedTitle')}
             </h3>
             <button
               onClick={() => fetchBrokerAccounts()}
@@ -175,8 +178,8 @@ export default function BrokerConnector() {
           {brokerAccounts.length === 0 ? (
             <div className="h-[220px] flex flex-col items-center justify-center border border-dashed border-slate-800 rounded-2xl space-y-2 bg-slate-950/20">
               <Unlink className="h-8 w-8 text-slate-600" />
-              <span className="text-xs text-slate-400 font-mono">Belum ada akun broker terhubung.</span>
-              <span className="text-[10px] text-slate-600 font-mono">Gunakan formulir di sebelah kiri.</span>
+              <span className="text-xs text-slate-400 font-mono">{t('broker.noAccounts')}</span>
+              <span className="text-[10px] text-slate-600 font-mono">{t('broker.useForm')}</span>
             </div>
           ) : (
             <div className="space-y-3">
@@ -206,25 +209,39 @@ export default function BrokerConnector() {
                     <div className="flex items-center gap-4 justify-between sm:justify-end">
                       <div className="flex gap-4">
                         <div>
-                          <span className="text-[9px] text-slate-500 font-mono block">SALDO</span>
+                          <span className="text-[9px] text-slate-500 font-mono block">{t('broker.balance')}</span>
                           <span className="text-xs font-bold text-slate-200 font-mono">${acc.balance.toLocaleString('id-ID', { minimumFractionDigits: 2 })}</span>
                         </div>
                         <div>
-                          <span className="text-[9px] text-slate-500 font-mono block">EKUITAS</span>
+                          <span className="text-[9px] text-slate-500 font-mono block">{t('broker.equity')}</span>
                           <span className="text-xs font-bold text-cyan-400 font-mono">${acc.equity.toLocaleString('id-ID', { minimumFractionDigits: 2 })}</span>
                         </div>
                       </div>
 
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleSync(acc.id);
-                        }}
-                        className="p-2 bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-cyan-500/30 rounded-xl text-slate-300 hover:text-cyan-455 transition-all"
-                        title="Sinkronkan Sekarang"
-                      >
-                        <RefreshCw className="h-3.5 w-3.5" />
-                      </button>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleSync(acc.id);
+                          }}
+                          className="p-2 bg-slate-900 hover:bg-slate-800 border border-slate-800 hover:border-cyan-500/30 rounded-xl text-slate-350 hover:text-cyan-400 transition-all flex items-center justify-center cursor-pointer"
+                          title={t('broker.syncNow')}
+                        >
+                          <RefreshCw className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (confirm(t('broker.confirmDisconnect'))) {
+                              disconnectBrokerAccount(acc.id);
+                            }
+                          }}
+                          className="p-2 bg-slate-900 hover:bg-rose-950/40 border border-slate-800 hover:border-rose-900/40 rounded-xl text-slate-400 hover:text-rose-455 transition-all flex items-center justify-center cursor-pointer"
+                          title={t('broker.disconnect')}
+                        >
+                          <Unlink className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -238,11 +255,11 @@ export default function BrokerConnector() {
           <div className="p-6 bg-slate-900 border border-slate-800 rounded-3xl space-y-4 shadow-xl animate-scale-up">
             <h3 className="text-xs font-bold text-slate-200 uppercase tracking-wider font-mono flex items-center gap-2">
               <Clock className="text-cyan-400 h-4 w-4" />
-              Log Sinkronisasi Akun
+              {t('broker.syncLogs')}
             </h3>
 
             {logs.length === 0 ? (
-              <p className="text-[11px] text-slate-500 font-mono">Belum ada riwayat sinkronisasi untuk akun ini.</p>
+              <p className="text-[11px] text-slate-500 font-mono">{t('broker.noSyncLogs')}</p>
             ) : (
               <div className="space-y-2 max-h-[220px] overflow-y-auto pr-2">
                 {logs.map((log: any) => (
@@ -275,4 +292,3 @@ export default function BrokerConnector() {
     </div>
   );
 }
-
