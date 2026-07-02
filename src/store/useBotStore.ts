@@ -1480,6 +1480,18 @@ export const useBotStore = create<BotState>((set, get) => ({
       if (response.ok) {
         const brokerAccounts = await response.json();
         set({ brokerAccounts });
+        
+        // Sync active broker account balance/equity with main dashboard stats
+        if (brokerAccounts && brokerAccounts.length > 0) {
+          const activeAcc = brokerAccounts[0];
+          set((state) => ({
+            stats: {
+              ...state.stats,
+              balance: activeAcc.balance,
+              equity: activeAcc.equity
+            }
+          }));
+        }
       }
     } catch (err) {
       console.error('Failed to fetch broker accounts:', err);
@@ -2543,10 +2555,15 @@ export const useBotStore = create<BotState>((set, get) => ({
       });
       if (response.ok) {
         get().addNotification('Konfigurasi aplikasi berhasil diperbarui.');
+        get().addToast('Konfigurasi aplikasi berhasil diperbarui!', 'success');
         get().fetchAppConfig();
+      } else {
+        const errData = await response.json().catch(() => ({}));
+        get().addToast(errData.message || 'Gagal menyimpan konfigurasi di server.', 'error');
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to update app config:', err);
+      get().addToast(err.message || 'Koneksi gagal saat memperbarui konfigurasi.', 'error');
     }
   },
 
