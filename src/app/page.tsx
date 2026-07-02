@@ -28,6 +28,7 @@ import PammDashboard from '@/components/PammDashboard';
 import DeveloperPortal from '@/components/DeveloperPortal';
 import InboxView from '@/components/InboxView';
 import ToastContainer from '@/components/ToastContainer';
+import SimulationSandbox from '@/components/SimulationSandbox';
 import { useSessionTimeout } from '@/hooks/useSessionTimeout';
 import { mockSocketService } from '@/services/mockSocket';
 import { useBotStore } from '@/store/useBotStore';
@@ -216,6 +217,12 @@ export default function Home() {
           {activeTab === 'logs' && (
             <div className="h-[calc(100vh-140px)]">
               <AiConsole />
+            </div>
+          )}
+
+          {activeTab === 'simulation' && (
+            <div className="min-h-[calc(100vh-140px)]">
+              <SimulationSandbox />
             </div>
           )}
 
